@@ -6,6 +6,9 @@ import
 export TimeExpression, TimeVariable, TimeLinearCombination
 export coefficient, substitute, simplify
 
+
+###################################################################################################
+
 abstract TimeExpression
 
 type TimeVariable <: TimeExpression
@@ -88,6 +91,87 @@ substitute(ex::TimeVariable, this::TimeVariable, by::TimeExpression) = (ex==this
 function substitute(ex::TimeLinearCombination, this::TimeVariable, by::TimeExpression)
     TimeLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
+
+
+###################################################################################################
+
+type AutonomousFunction
+   name::AbstractString
+   latex::AbstractString
+end
+
+function AutonomousFunction(name::AbstractString; 
+                            latex::AbstractString=name)
+    AutonomousFunction(name, latex)
+end   
+
+string(t::TimeVariable) = t.name
+show(io::IO, t::TimeVariable) = print(io, string(t))
+
+###################################################################################################
+# Essentially the same stuff again with Time substituted by Space...
+
+abstract SpaceExpression
+
+type SpaceTimeVariable <: SpaceExpression
+   name::AbstractString
+   latex::AbstractString
+end 
+
+function SpaceVariable(name::AbstractString; 
+                      latex::AbstractString=name)
+    SpaceVariable(name, latex)
+end   
+
+string(t::SpaceVariable) = t.name
+show(io::IO, t::SpaceVariable) = print(io, string(t))
+
+
+type SpaceLinearCombination <: SpaceExpression
+   terms :: Array{Tuple{SpaceExpression, Real},1}
+end
+
+SpaceLinearCombination(x...) = simplify(SpaceLinearCombination([ (x[i],x[i+1]) for i=1:2:length(x) ]))
+
++(a::SpaceExpression, b::SpaceExpression) = SpaceLinearCombination(a,1, b, 1)
+-(a::SpaceExpression, b::SpaceExpression) = SpaceLinearCombination(a,1, b,-1)
+-(a::SpaceExpression) = (-1)*a
+*(f::Real, ex::SpaceVariable) = SpaceLinearCombination(ex,f)
+*(f::Real, ex::SpaceLinearCombination) = SpaceLinearCombination( [ (x, f*c) for (x, c) in ex.terms ] )
+*(ex::SpaceExpression, f::Real) = f*ex
+
+function string(ex::SpaceLinearCombination) 
+    if length(ex.terms) == 0 
+        return "0"  #empty linear combination
+    else    
+        s = join([join([c>=0?"+":"-", abs(c)==1?"":abs(c),
+            typeof(x)!=SpaceVariable?"(":"", #TODO: which other types don't need parantheses?
+            string(x), 
+            typeof(x)!=SpaceVariable?")":"", 
+        ]) for (x, c) in ex.terms])
+        return s[1]=='+' ? s[2:end] : s
+    end    
+end   
+
+show(io::IO, t::SpaceTimeLinearCombination) = print(io, string(t))
+
+
+substitute(ex::SpaceVariable, this::SpaceVariable, by::SpaceExpression) = (ex==this ? by : ex)
+substitute(ex::SpaceVariable, this::TimeVariable, by::TimeExpression) = ex 
+
+function substitute(ex::SpaceLinearCombination, this::SpaceVariable, by::SpaceExpression)
+    TimeLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
+end
+
+function substitute(ex::SpaceLinearCombination, this::ThisVariable, by::ThisExpression)
+    TimeLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
+end
+
+
+
+###################################################################################################
+
+
 
 
 end #module Flows
