@@ -113,7 +113,7 @@ show(io::IO, t::TimeVariable) = print(io, string(t))
 
 abstract SpaceExpression
 
-type SpaceTimeVariable <: SpaceExpression
+type SpaceVariable <: SpaceExpression
    name::AbstractString
    latex::AbstractString
 end 
@@ -153,7 +153,7 @@ function string(ex::SpaceLinearCombination)
     end    
 end   
 
-show(io::IO, t::SpaceTimeLinearCombination) = print(io, string(t))
+show(io::IO, t::SpaceLinearCombination) = print(io, string(t))
 
 
 substitute(ex::SpaceVariable, this::SpaceVariable, by::SpaceExpression) = (ex==this ? by : ex)
@@ -163,7 +163,7 @@ function substitute(ex::SpaceLinearCombination, this::SpaceVariable, by::SpaceEx
     TimeLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
 
-function substitute(ex::SpaceLinearCombination, this::ThisVariable, by::ThisExpression)
+function substitute(ex::SpaceLinearCombination, this::TimeVariable, by::TimeExpression)
     TimeLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
 
