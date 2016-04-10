@@ -5,8 +5,11 @@ import
 
 export TimeExpression, TimeVariable, TimeLinearCombination
 export SpaceExpression, SpaceVariable, SpaceLinearCombination
+export AutonomousFunction
+export FunctionExpression, AutonomousFunctionExpression, FlowExpression
 export coefficient, substitute, simplify
 export print_time_expression_register, print_space_expression_register
+export t_zero, x_zero
 
 export _str, _expand, _collect
 export _register, _str_flat_arg_name, _get_register_key, _register
@@ -19,7 +22,7 @@ export _space_expression_index, _space_expression_register
 
 abstract TimeExpression
 
-type TimeVariable <: TimeExpression
+immutable TimeVariable <: TimeExpression
    name::AbstractString
    latex::AbstractString
 end 
@@ -32,9 +35,11 @@ end
 string(t::TimeVariable) = t.name
 show(io::IO, t::TimeVariable) = print(io, string(t))
 
-type TimeLinearCombination <: TimeExpression
+immutable TimeLinearCombination <: TimeExpression
    terms :: Array{Tuple{TimeExpression, Real},1}
 end
+
+global t_zero = TimeLinearCombination([]) # "empty" TimeExpression
 
 TimeLinearCombination(x...) = simplify(TimeLinearCombination([ (x[i],x[i+1]) for i=1:2:length(x) ]))
 
@@ -111,7 +116,6 @@ function substitute(ex::TimeLinearCombination, this::TimeVariable, by::TimeExpre
     TimeLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
 
-
 global _time_expression_index = Dict{TimeExpression,Int}()
 global _time_expression_register = Dict{ASCIIString,Tuple{TimeExpression,Int}}()
 
@@ -142,7 +146,7 @@ end
 
 ###################################################################################################
 
-type AutonomousFunction
+immutable AutonomousFunction
    name::AbstractString
    latex::AbstractString
 end
@@ -160,7 +164,7 @@ show(io::IO, t::TimeVariable) = print(io, string(t))
 
 abstract SpaceExpression
 
-type SpaceVariable <: SpaceExpression
+immutable SpaceVariable <: SpaceExpression
    name::AbstractString
    latex::AbstractString
 end 
@@ -174,9 +178,11 @@ string(t::SpaceVariable) = t.name
 show(io::IO, t::SpaceVariable) = print(io, string(t))
 
 
-type SpaceLinearCombination <: SpaceExpression
+immutable SpaceLinearCombination <: SpaceExpression
    terms :: Array{Tuple{SpaceExpression, Real},1}
 end
+
+global x_zero = SpaceLinearCombination([]) # "empty" SpaceExpression
 
 SpaceLinearCombination(x...) = simplify(SpaceLinearCombination([ (x[i],x[i+1]) for i=1:2:length(x) ]))
 
@@ -202,6 +208,29 @@ end
 
 string(ex::SpaceLinearCombination) = _str(ex, flat=false)
 show(io::IO, t::SpaceLinearCombination) = print(io, string(t))
+
+abstract FunctionExpression <: SpaceExpression
+
+immutable AutonomousFunctionExpression <: FunctionExpression
+    fun::AutonomousFunction
+    t::TimeExpression # = t_zero 
+    x::SpaceExpression
+    dt_order::Int # = 0
+    d_args::Array{SpaceExpression,1}
+    function AutonomousFunctionExpression(fun::AutonomousFunction, 
+                                          x::SpaceExpression, 
+                                          d_args...) 
+        new(fun, t_zero, x, 0, SpaceExpression[x for x in d_args])
+    end    
+end
+
+immutable FlowExpression <: FunctionExpression
+    fun::AutonomousFunction
+    t::TimeExpression 
+    x::SpaceExpression
+    dt_order::Int 
+    d_args::Array{SpaceExpression,1}
+end
 
 
 substitute(ex::SpaceVariable, this::SpaceVariable, by::SpaceExpression) = (ex==this ? by : ex)
