@@ -4,7 +4,15 @@ import
     Base: (*), +, -, string, show
 
 export TimeExpression, TimeVariable, TimeLinearCombination
+export SpaceExpression, SpaceVariable, SpaceLinearCombination
 export coefficient, substitute, simplify
+export print_time_expression_register, print_space_expression_register
+
+export _str, _expand, _collect
+export _register, _str_flat_arg_name, _get_register_key, _register
+export _time_expression_index, _time_expression_register
+export _space_expression_index, _space_expression_register
+
 
 
 ###################################################################################################
@@ -37,19 +45,20 @@ TimeLinearCombination(x...) = simplify(TimeLinearCombination([ (x[i],x[i+1]) for
 *(f::Real, ex::TimeLinearCombination) = TimeLinearCombination( [ (x, f*c) for (x, c) in ex.terms ] )
 *(ex::TimeExpression, f::Real) = f*ex
 
-function string(ex::TimeLinearCombination) 
+function _str(ex::TimeLinearCombination; flat::Bool=true) 
     if length(ex.terms) == 0 
         return "0"  #empty linear combination
     else    
         s = join([join([c>=0?"+":"-", abs(c)==1?"":abs(c),
             typeof(x)!=TimeVariable?"(":"", 
-            string(x), 
+            flat?_str_flat_arg_name(x):string(x), 
             typeof(x)!=TimeVariable?")":"", 
         ]) for (x, c) in ex.terms])
         return s[1]=='+' ? s[2:end] : s
     end    
 end   
 
+string(ex::TimeLinearCombination) = _str(ex, flat=false)
 show(io::IO, t::TimeLinearCombination) = print(io, string(t))
 
 function _expand(ex::TimeLinearCombination)
@@ -70,7 +79,17 @@ function _collect(ex::TimeLinearCombination)
             delete!(d, key)
         end
     end    
-    TimeLinearCombination([(key,val) for (key, val) in d])
+    if length(d) == 1 
+        #Each linear combination consisting of only one term with coefficient 1 
+        #is replaced by this term.
+        #Note that this term must have been already registered.
+        for (key, val) in d
+            if val==1
+                return key
+            end    
+        end
+    end    
+    return _register(TimeLinearCombination([(key,val) for (key, val) in d]))
 end
 
 simplify(v::TimeVariable) = v
@@ -92,6 +111,34 @@ function substitute(ex::TimeLinearCombination, this::TimeVariable, by::TimeExpre
     TimeLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
 
+
+global _time_expression_index = Dict{TimeExpression,Int}()
+global _time_expression_register = Dict{ASCIIString,Tuple{TimeExpression,Int}}()
+
+function _get_register_key(ex::TimeLinearCombination)
+    join(['L', join([join([hex(Int(pointer_from_objref(x))), ':', c]) 
+        for (x,c) in sort(ex.terms, 
+            lt = (a,b) -> pointer_from_objref(a[1])<pointer_from_objref(b[1])) ],'|')])
+end    
+
+function _register(ex::TimeExpression)
+    key = _get_register_key(ex)
+    (ex,i) = get!(_time_expression_register, key) do
+        i = length(_time_expression_index)
+        _time_expression_index[ex] = i 
+        (ex, i)
+    end
+    ex
+end
+
+_str_flat_arg_name(ex::TimeExpression) = join(["#", _time_expression_index[ex]])
+_str_flat_arg_name(ex::TimeVariable) = ex.name
+
+function print_time_expression_register()
+    for (ex, i) in sort(collect(values(_time_expression_register)), lt = (a,b)-> a[2]<b[2])
+        println("#", i, "\t" , _str(ex, flat=true))
+     end
+end
 
 ###################################################################################################
 
@@ -140,19 +187,20 @@ SpaceLinearCombination(x...) = simplify(SpaceLinearCombination([ (x[i],x[i+1]) f
 *(f::Real, ex::SpaceLinearCombination) = SpaceLinearCombination( [ (x, f*c) for (x, c) in ex.terms ] )
 *(ex::SpaceExpression, f::Real) = f*ex
 
-function string(ex::SpaceLinearCombination) 
+function _str(ex::SpaceLinearCombination; flat::Bool=true) 
     if length(ex.terms) == 0 
         return "0"  #empty linear combination
     else    
         s = join([join([c>=0?"+":"-", abs(c)==1?"":abs(c),
             typeof(x)!=SpaceVariable?"(":"", #TODO: which other types don't need parantheses?
-            string(x), 
+            flat?_str_flat_arg_name(x):string(x), 
             typeof(x)!=SpaceVariable?")":"", 
         ]) for (x, c) in ex.terms])
         return s[1]=='+' ? s[2:end] : s
     end    
 end   
 
+string(ex::SpaceLinearCombination) = _str(ex, flat=false)
 show(io::IO, t::SpaceLinearCombination) = print(io, string(t))
 
 
@@ -160,14 +208,41 @@ substitute(ex::SpaceVariable, this::SpaceVariable, by::SpaceExpression) = (ex==t
 substitute(ex::SpaceVariable, this::TimeVariable, by::TimeExpression) = ex 
 
 function substitute(ex::SpaceLinearCombination, this::SpaceVariable, by::SpaceExpression)
-    TimeLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
+    SpaceLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
 
 function substitute(ex::SpaceLinearCombination, this::TimeVariable, by::TimeExpression)
-    TimeLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
+    SpaceLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
 
 
+global _space_expression_index = Dict{SpaceExpression,Int}()
+global _space_expression_register = Dict{ASCIIString,Tuple{SpaceExpression,Int}}()
+
+function _get_register_key(ex::SpaceLinearCombination)
+    join(['L', join([join([hex(Int(pointer_from_objref(x))), ':', c]) 
+        for (x,c) in sort(ex.terms, 
+            lt = (a,b) -> pointer_from_objref(a[1])<pointer_from_objref(b[1])) ],'|')])
+end    
+
+function _register(ex::SpaceExpression)
+    key = _get_register_key(ex)
+    (ex,i) = get!(_space_expression_register, key) do
+        i = length(_space_expression_index)
+        _space_expression_index[ex] = i 
+        (ex, i)
+    end
+    ex
+end
+
+_str_flat_arg_name(ex::SpaceExpression) = join(["#", _space_expression_index[ex]])
+_str_flat_arg_name(ex::SpaceVariable) = ex.name
+
+function print_space_expression_register()
+    for (ex, i) in sort(collect(values(_space_expression_register)), lt = (a,b)-> a[2]<b[2])
+        println("#", i, "\t" , _str(ex, flat=true))
+     end
+end
 
 ###################################################################################################
 
