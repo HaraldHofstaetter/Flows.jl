@@ -11,12 +11,15 @@ export coefficient, substitute, simplify
 export print_time_expression_register, print_space_expression_register
 export t_zero, x_zero
 
+export @t_vars, @x_vars, @funs
+
 export _str, _expand, _collect
 export _register, _str_flat_arg_name, _get_register_key, _register
 export _time_expression_index, _time_expression_register
 export _space_expression_index, _space_expression_register
 
 
+_str_from_objref(x) = hex(Int(pointer_from_objref(x)))
 
 ###################################################################################################
 
@@ -64,7 +67,7 @@ function _str(ex::TimeLinearCombination; flat::Bool=true)
 end   
 
 string(ex::TimeLinearCombination) = _str(ex, flat=false)
-show(io::IO, t::TimeLinearCombination) = print(io, string(t))
+show(io::IO, ex::TimeLinearCombination) = print(io, string(ex))
 
 function _expand(ex::TimeLinearCombination)
     TimeLinearCombination(
@@ -120,9 +123,9 @@ global _time_expression_index = Dict{TimeExpression,Int}()
 global _time_expression_register = Dict{ASCIIString,Tuple{TimeExpression,Int}}()
 
 function _get_register_key(ex::TimeLinearCombination)
-    join(['L', join([join([hex(Int(pointer_from_objref(x))), ':', c]) 
+    string('L', join([join([_str_from_objref(x), ':', c]) 
         for (x,c) in sort(ex.terms, 
-            lt = (a,b) -> pointer_from_objref(a[1])<pointer_from_objref(b[1])) ],'|')])
+            lt = (a,b) -> pointer_from_objref(a[1])<pointer_from_objref(b[1])) ],'|'))
 end    
 
 function _register(ex::TimeExpression)
@@ -135,7 +138,7 @@ function _register(ex::TimeExpression)
     ex
 end
 
-_str_flat_arg_name(ex::TimeExpression) = join(["#", _time_expression_index[ex]])
+_str_flat_arg_name(ex::TimeExpression) = string("#", _time_expression_index[ex])
 _str_flat_arg_name(ex::TimeVariable) = ex.name
 
 function print_time_expression_register()
@@ -156,8 +159,8 @@ function AutonomousFunction(name::AbstractString;
     AutonomousFunction(name, latex)
 end   
 
-string(t::TimeVariable) = t.name
-show(io::IO, t::TimeVariable) = print(io, string(t))
+string(f::AutonomousFunction) = f.name
+show(io::IO, f::AutonomousFunction) = print(io, string(f))
 
 ###################################################################################################
 # Essentially the same stuff again with Time substituted by Space...
@@ -174,8 +177,8 @@ function SpaceVariable(name::AbstractString;
     SpaceVariable(name, latex)
 end   
 
-string(t::SpaceVariable) = t.name
-show(io::IO, t::SpaceVariable) = print(io, string(t))
+string(x::SpaceVariable) = x.name
+show(io::IO, x::SpaceVariable) = print(io, string(x))
 
 
 immutable SpaceLinearCombination <: SpaceExpression
@@ -207,7 +210,7 @@ function _str(ex::SpaceLinearCombination; flat::Bool=true)
 end   
 
 string(ex::SpaceLinearCombination) = _str(ex, flat=false)
-show(io::IO, t::SpaceLinearCombination) = print(io, string(t))
+show(io::IO, ex::SpaceLinearCombination) = print(io, string(ex))
 
 abstract FunctionExpression <: SpaceExpression
 
@@ -220,9 +223,36 @@ immutable AutonomousFunctionExpression <: FunctionExpression
     function AutonomousFunctionExpression(fun::AutonomousFunction, 
                                           x::SpaceExpression, 
                                           d_args...) 
-        new(fun, t_zero, x, 0, SpaceExpression[x for x in d_args])
+        _register(new(fun, t_zero, x, 0, SpaceExpression[x for x in d_args]))
     end    
 end
+
+#overloaded 'call' allows syntax 'F(x)' instead of 'AutonomousFunctionExpression(F, x)'
+function call(F::AutonomousFunction, x::SpaceExpression, d_args...)
+    AutonomousFunctionExpression(F::AutonomousFunction, x::SpaceExpression, d_args...) 
+end
+
+function _str(ex::AutonomousFunctionExpression; flat::Bool=true)
+    s = string(ex.fun)
+    n2 = length(ex.d_args)
+    if n2>0 
+        s = string(s, "{", n2, "}")
+    end
+    s = string(s, "[",
+        flat?_str_flat_arg_name(ex.x):string(ex.x),
+        "]")
+    if n2>0
+        s = string(s, "(", 
+        join([
+            flat?_str_flat_arg_name(x):string(x)
+            for x in ex.d_args],","), 
+        ")")
+    end
+    s
+end
+
+string(ex::AutonomousFunctionExpression) = _str(ex, flat=false)
+show(io::IO, ex::AutonomousFunctionExpression) = print(io, string(ex))
 
 immutable FlowExpression <: FunctionExpression
     fun::AutonomousFunction
@@ -249,10 +279,18 @@ global _space_expression_index = Dict{SpaceExpression,Int}()
 global _space_expression_register = Dict{ASCIIString,Tuple{SpaceExpression,Int}}()
 
 function _get_register_key(ex::SpaceLinearCombination)
-    join(['L', join([join([hex(Int(pointer_from_objref(x))), ':', c]) 
+    string('L', join([join([_str_from_objref(x), ':', c]) 
         for (x,c) in sort(ex.terms, 
-            lt = (a,b) -> pointer_from_objref(a[1])<pointer_from_objref(b[1])) ],'|')])
+            lt = (a,b) -> pointer_from_objref(a[1])<pointer_from_objref(b[1])) ],'|'))
 end    
+
+function _get_register_key(ex::AutonomousFunctionExpression)
+    string('A', _str_from_objref(ex.fun), ":", _str_from_objref(ex.x), "|",
+        join([_str_from_objref(x)
+            for x in sort(ex.d_args, 
+            lt = (a,b) -> pointer_from_objref(a)<pointer_from_objref(b)) ],':'))
+end    
+
 
 function _register(ex::SpaceExpression)
     key = _get_register_key(ex)
@@ -264,7 +302,7 @@ function _register(ex::SpaceExpression)
     ex
 end
 
-_str_flat_arg_name(ex::SpaceExpression) = join(["#", _space_expression_index[ex]])
+_str_flat_arg_name(ex::SpaceExpression) = string("#", _space_expression_index[ex])
 _str_flat_arg_name(ex::SpaceVariable) = ex.name
 
 function print_space_expression_register()
@@ -276,6 +314,6 @@ end
 ###################################################################################################
 
 
-
+include("constructors.jl")
 
 end #module Flows
