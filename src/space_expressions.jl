@@ -22,26 +22,25 @@ show(io::IO, x::SpaceVariable) = print(io, _str(x))
 
 immutable SpaceLinearCombination <: SpaceExpression
    terms :: Array{Tuple{SpaceExpression, Real},1}
+   function SpaceLinearCombination(terms :: Array{Tuple{SpaceExpression, Real},1}, dummy::Int)
+       new(terms)
+   end    
 end
 
-global x_zero = SpaceLinearCombination([]) # "empty" SpaceExpression
+global x_zero = SpaceLinearCombination(Tuple{SpaceExpression, Real}[], 0) # "empty" SpaceExpression
 
-function  SpaceLinearCombination(x...)
+function SpaceLinearCombination(terms :: Array{Tuple{SpaceExpression, Real},1})
     d = Dict{SpaceExpression,Real}()
-    for i=1:2:length(x)
-        ex = x[i]
-        @assert isa(ex,SpaceExpression) string("SpaceLinearCombination expected SpaceExpression for argument #",i)
-        c = x[i+1]
-        @assert isa(c,Real) string("SpaceLinearCombination expected Real for argument #",i+1)
-        if isa(ex, SpaceLinearCombination)
+    for (x,c) in terms
+        if isa(x, SpaceLinearCombination)
             # Nested SpaceLinearCombinations are expanded into parent SpaceLinearCombination
-            for (ex1, c1) in ex.terms
-                get!(d, ex1, 0) 
-                d[ex1] += c1
+            for (x1, c1) in x.terms
+                get!(d, x1, 0) 
+                d[x1] += c1
             end
         else
-            get!(d, ex, 0) 
-            d[ex] += c
+            get!(d, x, 0) 
+            d[x] += c
         end
     end
     for (key, val) in d
@@ -53,21 +52,23 @@ function  SpaceLinearCombination(x...)
     if length(d) == 1 
         # Each linear combination consisting of only one term with coefficient 1 
         # is replaced by this term.
-        # Note that this term must have been already registered.
+        # Note that this term has been already registered.
         for (key, val) in d
             if val==1
                 return key
             end    
         end
     end    
-    return _register(SpaceLinearCombination([(key,val) for (key, val) in d]))
+    return _register(SpaceLinearCombination(Tuple{SpaceExpression, Real}[(key,val) for (key, val) in d], 0))
 end
+
+SpaceLinearCombination(x...) = SpaceLinearCombination(Tuple{SpaceExpression, Real}[(x[i],x[i+1]) for i=1:2:length(x) ])
 
 +(a::SpaceExpression, b::SpaceExpression) = SpaceLinearCombination(a,1, b, 1)
 -(a::SpaceExpression, b::SpaceExpression) = SpaceLinearCombination(a,1, b,-1)
 -(a::SpaceExpression) = (-1)*a
 *(f::Real, ex::SpaceExpression) = SpaceLinearCombination(ex,f)
-*(f::Real, ex::SpaceLinearCombination) = SpaceLinearCombination( [ (x, f*c) for (x, c) in ex.terms ] )
+*(f::Real, ex::SpaceLinearCombination) = SpaceLinearCombination( Tuple{SpaceExpression, Real}[ (x, f*c) for (x, c) in ex.terms ])
 *(ex::SpaceExpression, f::Real) = f*ex
 
 function _str(ex::SpaceLinearCombination; flat::Bool=false, latex::Bool=false) 
@@ -215,16 +216,6 @@ writemime(io::IO, ::MIME"application/x-latex", ex::SpaceExpression) = write(io, 
 writemime(io::IO, ::MIME"text/latex",  ex::SpaceExpression) = write(io, "\$", _str(ex, latex=true), "\$")
 
 
-substitute(ex::SpaceVariable, this::SpaceVariable, by::SpaceExpression) = (ex==this ? by : ex)
-substitute(ex::SpaceVariable, this::TimeVariable, by::TimeExpression) = ex 
-
-function substitute(ex::SpaceLinearCombination, this::SpaceVariable, by::SpaceExpression)
-    SpaceLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
-end
-
-function substitute(ex::SpaceLinearCombination, this::TimeVariable, by::TimeExpression)
-    SpaceLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
-end
 
 
 global _space_expression_index = Dict{SpaceExpression,Int}()
