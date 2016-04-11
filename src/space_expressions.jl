@@ -1,13 +1,8 @@
 immutable AutonomousFunction
    name::AbstractString
-   latex::AbstractString
 end
 
-function AutonomousFunction(name::AbstractString; 
-                            latex::AbstractString=name)
-    AutonomousFunction(name, latex)
-end   
-
+_str(f::AutonomousFunction; flat::Bool=false, latex::Bool=false) = f.name
 string(f::AutonomousFunction) = f.name
 show(io::IO, f::AutonomousFunction) = print(io, string(f))
 
@@ -18,16 +13,11 @@ abstract SpaceExpression
 
 immutable SpaceVariable <: SpaceExpression
    name::AbstractString
-   latex::AbstractString
 end 
 
-function SpaceVariable(name::AbstractString; 
-                      latex::AbstractString=name)
-    SpaceVariable(name, latex)
-end   
-
-string(x::SpaceVariable) = x.name
-show(io::IO, x::SpaceVariable) = print(io, string(x))
+_str(x::SpaceVariable; flat::Bool=false, latex::Bool=false) = x.name
+string(x::SpaceVariable) = _str(x)
+show(io::IO, x::SpaceVariable) = print(io, _str(x))
 
 
 immutable SpaceLinearCombination <: SpaceExpression
@@ -36,30 +26,65 @@ end
 
 global x_zero = SpaceLinearCombination([]) # "empty" SpaceExpression
 
-SpaceLinearCombination(x...) = simplify(SpaceLinearCombination([ (x[i],x[i+1]) for i=1:2:length(x) ]))
+function  SpaceLinearCombination(x...)
+    d = Dict{SpaceExpression,Real}()
+    for i=1:2:length(x)
+        ex = x[i]
+        @assert isa(ex,SpaceExpression) string("SpaceLinearCombination expected SpaceExpression for argument #",i)
+        c = x[i+1]
+        @assert isa(c,Real) string("SpaceLinearCombination expected Real for argument #",i+1)
+        if isa(ex, SpaceLinearCombination)
+            # Nested SpaceLinearCombinations are expanded into parent SpaceLinearCombination
+            for (ex1, c1) in ex.terms
+                get!(d, ex1, 0) 
+                d[ex1] += c1
+            end
+        else
+            get!(d, ex, 0) 
+            d[ex] += c
+        end
+    end
+    for (key, val) in d
+        # Terms with coefficient 0 are deleted
+        if val == 0
+            delete!(d, key)
+        end
+    end    
+    if length(d) == 1 
+        # Each linear combination consisting of only one term with coefficient 1 
+        # is replaced by this term.
+        # Note that this term must have been already registered.
+        for (key, val) in d
+            if val==1
+                return key
+            end    
+        end
+    end    
+    return _register(SpaceLinearCombination([(key,val) for (key, val) in d]))
+end
 
 +(a::SpaceExpression, b::SpaceExpression) = SpaceLinearCombination(a,1, b, 1)
 -(a::SpaceExpression, b::SpaceExpression) = SpaceLinearCombination(a,1, b,-1)
 -(a::SpaceExpression) = (-1)*a
-*(f::Real, ex::SpaceVariable) = SpaceLinearCombination(ex,f)
+*(f::Real, ex::SpaceExpression) = SpaceLinearCombination(ex,f)
 *(f::Real, ex::SpaceLinearCombination) = SpaceLinearCombination( [ (x, f*c) for (x, c) in ex.terms ] )
 *(ex::SpaceExpression, f::Real) = f*ex
 
-function _str(ex::SpaceLinearCombination; flat::Bool=true) 
+function _str(ex::SpaceLinearCombination; flat::Bool=false, latex::Bool=false) 
     if length(ex.terms) == 0 
         return "0"  #empty linear combination
     else    
         s = join([join([c>=0?"+":"-", abs(c)==1?"":abs(c),
-            typeof(x)!=SpaceVariable?"(":"", #TODO: which other types don't need parantheses?
-            flat?_str_flat_arg_name(x):string(x), 
-            typeof(x)!=SpaceVariable?")":"", 
+            isa(x,SpaceLinearCombination)?"(":"", #TODO: which other types don't need parantheses?
+            flat?_str_flat_arg_name(x):_str(x, latex=latex), 
+            isa(x,SpaceLinearCombination)?")":"", 
         ]) for (x, c) in ex.terms])
         return s[1]=='+' ? s[2:end] : s
     end    
 end   
 
-string(ex::SpaceLinearCombination) = _str(ex, flat=false)
-show(io::IO, ex::SpaceLinearCombination) = print(io, string(ex))
+string(ex::SpaceLinearCombination) = _str(ex)
+show(io::IO, ex::SpaceLinearCombination) = print(io, _str(ex))
 
 abstract FunctionExpression <: SpaceExpression
 
@@ -81,27 +106,43 @@ function call(F::AutonomousFunction, x::SpaceExpression, d_args...)
     AutonomousFunctionExpression(F::AutonomousFunction, x::SpaceExpression, d_args...) 
 end
 
-function _str(ex::AutonomousFunctionExpression; flat::Bool=true)
-    s = string(ex.fun)
+function _str(ex::AutonomousFunctionExpression; flat::Bool=false, latex::Bool=false)
+    s = _str(ex.fun, latex=latex)
     n2 = length(ex.d_args)
-    if n2>0 
+    if latex
+       if n2==1
+          s = string(s, "'")
+       elseif n2==2
+          s = string(s, "''")
+       elseif n2==3
+          s = string(s, "'''")
+       elseif n2>=4
+          s = string(s, "^{(", n2, ")}")
+       end
+    elseif n2>0 
         s = string(s, "{", n2, "}")
     end
-    s = string(s, "[",
-        flat?_str_flat_arg_name(ex.x):string(ex.x),
-        "]")
-    if n2>0
+    s = string(s, latex?"(":"[",
+        flat?_str_flat_arg_name(ex.x):_str(ex.x, latex=latex),
+        latex?")":"]")
+    if latex && n2==1
+        x = ex.d_args[1]
+        s = string(s, "\\cdot ", 
+            isa(x, SpaceLinearCombination) ? "(":"",
+            _str(x, latex=true),
+            isa(x, SpaceLinearCombination) ? ")":"")
+    elseif n2>0
         s = string(s, "(", 
         join([
-            flat?_str_flat_arg_name(x):string(x)
+            flat?_str_flat_arg_name(x):_str(x, latex=latex)
             for x in ex.d_args],","), 
         ")")
     end
     s
 end
 
-string(ex::AutonomousFunctionExpression) = _str(ex, flat=false)
-show(io::IO, ex::AutonomousFunctionExpression) = print(io, string(ex))
+string(ex::AutonomousFunctionExpression) = _str(ex)
+show(io::IO, ex::AutonomousFunctionExpression) = print(io, _str(ex))
 
 immutable FlowExpression <: FunctionExpression
     fun::AutonomousFunction
@@ -109,7 +150,67 @@ immutable FlowExpression <: FunctionExpression
     x::SpaceExpression
     dt_order::Int 
     d_args::Array{SpaceExpression,1}
+    function FlowExpression(fun::AutonomousFunction, 
+                            t::TimeExpression, 
+                            x::SpaceExpression, 
+                            dt_order::Int,
+                            d_args...) 
+        _register(new(fun, t, x, dt_order, SpaceExpression[x for x in d_args]))
+    end    
 end
+
+function E(fun::AutonomousFunction, t::TimeExpression, x::SpaceExpression, d_args...)  
+    FlowExpression(fun, t, x, 0, d_args...) 
+end
+
+function _str(ex::FlowExpression; flat::Bool=false, latex::Bool=false)
+    n1 = ex.dt_order
+    n2 = length(ex.d_args)
+    if latex
+        s = ""
+        if n1>=1
+            s = string(s, "\\partial_{1}")
+        end    
+        if n1>=2
+            s = string(s, "^{", n1, "}")
+        end    
+        if n2>=1
+            s = string(s, "\\partial_{2}")
+        end    
+        if n2>=2
+            s = string(s, "^{", n2, "}")
+        end    
+        s = string(s, "\\mathcal{E}_{", _str(ex.fun, latex=true), "}")
+    else
+        s = string("E_", _str(ex.fun))
+        if n1>0 || n2>0 
+            s = string(s, "{", n1, ",", n2, "}")
+        end
+    end
+    s = string(s, latex?"(":"[",
+        flat?_str_flat_arg_name(ex.t):_str(ex.t, latex=latex),
+        ",",
+        flat?_str_flat_arg_name(ex.x):_str(ex.x, latex=latex),
+        latex?")":"]")
+    if latex && n2==1
+        x = ex.d_args[1]
+        s = string(s, "\\cdot ", 
+            isa(x, SpaceLinearCombination) ? "(":"",
+            _str(x, latex=true),
+            isa(x, SpaceLinearCombination) ? ")":"")
+    elseif n2>0
+        s = string(s, "(", 
+        join([
+            flat?_str_flat_arg_name(x):_str(x, latex=latex)
+            for x in ex.d_args],","), 
+        ")")
+    end
+    s
+end
+
+string(ex::FlowExpression) = _str(ex)
+show(io::IO, ex::FlowExpression) = print(io, _str(ex))
+
 
 
 substitute(ex::SpaceVariable, this::SpaceVariable, by::SpaceExpression) = (ex==this ? by : ex)
@@ -135,6 +236,13 @@ end
 
 function _get_register_key(ex::AutonomousFunctionExpression)
     string('A', _str_from_objref(ex.fun), ":", _str_from_objref(ex.x), "|",
+        join([_str_from_objref(x)
+            for x in sort(ex.d_args, 
+            lt = (a,b) -> pointer_from_objref(a)<pointer_from_objref(b)) ],':'))
+end    
+
+function _get_register_key(ex::FlowExpression)
+    string('E', _str_from_objref(ex.fun), ":", _str_from_objref(ex.x), ":", ex.dt_order, "|",
         join([_str_from_objref(x)
             for x in sort(ex.d_args, 
             lt = (a,b) -> pointer_from_objref(a)<pointer_from_objref(b)) ],':'))

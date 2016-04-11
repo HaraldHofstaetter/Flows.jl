@@ -1,5 +1,7 @@
 module Flows
 
+using LaTeXStrings
+
 import 
     Base: (*), +, -, string, show
 
@@ -7,7 +9,7 @@ export TimeExpression, TimeVariable, TimeLinearCombination
 export SpaceExpression, SpaceVariable, SpaceLinearCombination
 export AutonomousFunction
 export FunctionExpression, AutonomousFunctionExpression, FlowExpression
-export coefficient, substitute, simplify
+export E, coefficient, substitute, simplify
 export print_time_expression_register, print_space_expression_register
 export t_zero, x_zero
 

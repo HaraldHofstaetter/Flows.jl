@@ -2,16 +2,11 @@ abstract TimeExpression
 
 immutable TimeVariable <: TimeExpression
    name::AbstractString
-   latex::AbstractString
 end 
 
-function TimeVariable(name::AbstractString; 
-                      latex::AbstractString=name)
-    TimeVariable(name, latex)
-end   
-
-string(t::TimeVariable) = t.name
-show(io::IO, t::TimeVariable) = print(io, string(t))
+_str(t::TimeVariable; flat::Bool=false, latex::Bool=false) = t.name
+string(t::TimeVariable) = _str(t) 
+show(io::IO, t::TimeVariable) = print(io, _str(t))
 
 immutable TimeLinearCombination <: TimeExpression
    terms :: Array{Tuple{TimeExpression, Real},1}
@@ -28,21 +23,21 @@ TimeLinearCombination(x...) = simplify(TimeLinearCombination([ (x[i],x[i+1]) for
 *(f::Real, ex::TimeLinearCombination) = TimeLinearCombination( [ (x, f*c) for (x, c) in ex.terms ] )
 *(ex::TimeExpression, f::Real) = f*ex
 
-function _str(ex::TimeLinearCombination; flat::Bool=true) 
+function _str(ex::TimeLinearCombination; flat::Bool=false, latex::Bool=false) 
     if length(ex.terms) == 0 
         return "0"  #empty linear combination
     else    
         s = join([join([c>=0?"+":"-", abs(c)==1?"":abs(c),
             typeof(x)!=TimeVariable?"(":"", 
-            flat?_str_flat_arg_name(x):string(x), 
+            flat?_str_flat_arg_name(x):_str(x, latex=latex), 
             typeof(x)!=TimeVariable?")":"", 
         ]) for (x, c) in ex.terms])
         return s[1]=='+' ? s[2:end] : s
     end    
 end   
 
-string(ex::TimeLinearCombination) = _str(ex, flat=false)
-show(io::IO, ex::TimeLinearCombination) = print(io, string(ex))
+string(ex::TimeLinearCombination) = _str(ex)
+show(io::IO, ex::TimeLinearCombination) = print(io, _str(ex))
 
 function _expand(ex::TimeLinearCombination)
     TimeLinearCombination(
