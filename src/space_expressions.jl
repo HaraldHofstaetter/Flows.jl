@@ -211,6 +211,8 @@ end
 string(ex::FlowExpression) = _str(ex)
 show(io::IO, ex::FlowExpression) = print(io, _str(ex))
 
+writemime(io::IO, ::MIME"application/x-latex", ex::SpaceExpression) = write(io, "\$", _str(ex, latex=true), "\$")
+writemime(io::IO, ::MIME"text/latex",  ex::SpaceExpression) = write(io, "\$", _str(ex, latex=true), "\$")
 
 
 substitute(ex::SpaceVariable, this::SpaceVariable, by::SpaceExpression) = (ex==this ? by : ex)

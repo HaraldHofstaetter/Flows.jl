@@ -39,6 +39,10 @@ end
 string(ex::TimeLinearCombination) = _str(ex)
 show(io::IO, ex::TimeLinearCombination) = print(io, _str(ex))
 
+writemime(io::IO, ::MIME"application/x-latex", ex::TimeExpression) = write(io, "\$", _str(ex, latex=true), "\$")
+writemime(io::IO, ::MIME"text/latex",  ex::TimeExpression) = write(io, "\$", _str(ex, latex=true), "\$")
+
+
 function _expand(ex::TimeLinearCombination)
     TimeLinearCombination(
         vcat([ typeof(x)==TimeVariable ? (x, c) : (c*_expand(x)).terms for (x, c) in ex.terms ]...))

@@ -1,9 +1,7 @@
 module Flows
 
-using LaTeXStrings
-
 import 
-    Base: (*), +, -, string, show
+    Base: (*), +, -, string, show, write, writemime
 
 export TimeExpression, TimeVariable, TimeLinearCombination
 export SpaceExpression, SpaceVariable, SpaceLinearCombination
@@ -16,7 +14,7 @@ export t_zero, x_zero
 export @t_vars, @x_vars, @funs
 
 export _str, _expand, _collect
-export _register, _str_flat_arg_name, _get_register_key, _register
+export _register, _str_flat_arg_name, _get_register_key
 export _time_expression_index, _time_expression_register
 export _space_expression_index, _space_expression_register
 
