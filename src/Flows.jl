@@ -12,7 +12,7 @@ export FunctionExpression, AutonomousFunctionExpression, FlowExpression
 export E, coefficient, substitute, simplify
 export print_time_expression_register, print_space_expression_register
 export t_zero, x_zero
-export t_derivative
+export differential, t_derivative
 
 export @t_vars, @x_vars, @funs
 

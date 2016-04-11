@@ -60,8 +60,6 @@ function SpaceLinearCombination(terms :: Array{Tuple{SpaceExpression, Real},1})
     return _register(SpaceLinearCombination(Tuple{SpaceExpression, Real}[(key,val) for (key, val) in d], 0))
 end
 
-#global x_zero = _register(SpaceLinearCombination(Tuple{SpaceExpression, Real}[], 0)) # "empty" SpaceExpression
-
 SpaceLinearCombination(x...) = SpaceLinearCombination(Tuple{SpaceExpression, Real}[(x[i],x[i+1]) for i=1:2:length(x) ])
 
 +(a::SpaceExpression, b::SpaceExpression) = SpaceLinearCombination(a,1, b, 1)
@@ -98,14 +96,14 @@ immutable AutonomousFunctionExpression <: FunctionExpression
     function AutonomousFunctionExpression(fun::AutonomousFunction, 
                                           x::SpaceExpression, 
                                           d_args...) 
-        for x in d_args            
-            if x==x_zero
+        for d_arg in d_args            
+            if d_arg==x_zero
                 # If the AutonomousFunctionExpression is a derivative (i.e. a multilinear map),
                 # and one argument of this map is 0 then the AutonomousFunctionExpression itself shall be zero
                 return x_zero
             end
         end     
-        _register(new(fun, t_zero, x, 0, SpaceExpression[x for x in d_args]))
+        _register(new(fun, t_zero, x, 0, SpaceExpression[d_arg for d_arg in d_args]))
     end    
 end
 
@@ -163,14 +161,14 @@ immutable FlowExpression <: FunctionExpression
                             x::SpaceExpression, 
                             dt_order::Int,
                             d_args...)
-        for x in d_args            
-            if x==x_zero
+        for d_arg in d_args            
+            if d_arg==x_zero
                 # If the FlowExpression is a derivative (i.e. a multilinear map),
                 # and one argument of this map is 0 then the FlowExpression itself shall be zero
                 return x_zero
             end
         end     
-        _register(new(fun, t, x, dt_order, SpaceExpression[x for x in d_args]))
+        _register(new(fun, t, x, dt_order, SpaceExpression[d_arg for d_arg in d_args]))
     end    
 end
 
