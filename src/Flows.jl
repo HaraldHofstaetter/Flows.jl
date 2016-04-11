@@ -12,6 +12,7 @@ export FunctionExpression, AutonomousFunctionExpression, FlowExpression
 export E, coefficient, substitute, simplify
 export print_time_expression_register, print_space_expression_register
 export t_zero, x_zero
+export t_derivative
 
 export @t_vars, @x_vars, @funs
 
@@ -27,5 +28,10 @@ include("time_expressions.jl")
 include("space_expressions.jl")
 include("constructors.jl")
 include("library.jl")
+
+function __init__()
+    global t_zero = _register(TimeLinearCombination([])) 
+    global x_zero = _register(SpaceLinearCombination(Tuple{SpaceExpression, Real}[], 0)) 
+end
 
 end 

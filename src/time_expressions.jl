@@ -12,8 +12,6 @@ immutable TimeLinearCombination <: TimeExpression
    terms :: Array{Tuple{TimeExpression, Real},1}
 end
 
-global t_zero = TimeLinearCombination([]) # "empty" TimeExpression
-
 TimeLinearCombination(x...) = simplify(TimeLinearCombination([ (x[i],x[i+1]) for i=1:2:length(x) ]))
 
 +(a::TimeExpression, b::TimeExpression) = TimeLinearCombination(a,1, b, 1)
@@ -87,11 +85,6 @@ function coefficient(ex::TimeLinearCombination, v::TimeVariable)
     c
 end 
 
-substitute(ex::TimeVariable, this::TimeVariable, by::TimeExpression) = (ex==this ? by : ex)
-
-function substitute(ex::TimeLinearCombination, this::TimeVariable, by::TimeExpression)
-    TimeLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
-end
 
 global _time_expression_index = Dict{TimeExpression,Int}()
 global _time_expression_register = Dict{ASCIIString,Tuple{TimeExpression,Int}}()
