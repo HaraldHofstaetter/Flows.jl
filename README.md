@@ -27,7 +27,7 @@ Pkg.build("Flows")
 ##Examples
 To get easy access to the examples, copy them into the home directory:
 ```julia
-cp(joinpath(homedir(), ".julia/v0.4/Flows/examples/"), joinpath(homedir(), "Flows_examples"))
+cp(joinpath(homedir(), ".julia/v0.4/Flows/examples/"), joinpath(homedir(), "Flows_examples"), remove_destination=true)
 ```
 Then 'Flows_examples' will be listed in the JuliaBox home screen. The examples contain among others
 + [Flows.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/master/examples/Flows.ipynb)
