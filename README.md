@@ -6,7 +6,7 @@ which is no longer maintained and is almost impossible to understand.
 (The ugly peculiarities of the Perl  syntax were the main motivation to reimplement this stuff in Julia...)
 
 Flows.jl (or its Perl predecessor) was used to carry out and verify the symbolic manipulations 
-needed for the analysis of error estimators of splitting methods, which is described in  [these slides for a talk](http://www.harald-hofstaetter.at/Math/Flows_of_Differential_Equations.pdf) and in the paper
+needed for the analysis of error estimators for splitting methods, which is described in  [these slides for a talk](http://www.harald-hofstaetter.at/Math/Flows_of_Differential_Equations.pdf) and in the paper
 
 > [W. Auzinger](http://www.asc.tuwien.ac.at/~winfried),
 > [H. Hofstätter](http://www.harald-hofstaetter.at),
@@ -31,4 +31,5 @@ cp(joinpath(homedir(), ".julia/v0.4/Flows/examples/"), joinpath(homedir(), "Flow
 ```
 Then 'Flows_examples' will be listed in the JuliaBox home screen. The examples contain among others
 + [Flows.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/master/examples/Flows.ipynb)
++ [ElementaryDifferentials.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/master/examples/ElementaryDifferentials.ipynb)
   
