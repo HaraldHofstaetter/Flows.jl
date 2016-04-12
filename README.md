@@ -6,7 +6,7 @@ which is no longer maintained and is almost impossible to understand.
 (The ugly peculiarities of the Perl  syntax were the main motivation to reimplement this stuff in Julia...)
 
 Flows.jl (or its Perl predecessor) was used to carry out and verify the symbolic manipulations 
-needed for the analysis of error estimators for splitting methods, which is described in  [these slides for a talk](http://www.harald-hofstaetter.at/Math/Flows_of_Differential_Equations.pdf) and in the paper
+needed for the analysis of error estimators for splitting methods, which is described in  [these slides](http://www.harald-hofstaetter.at/Math/Flows_of_Differential_Equations.pdf) and in the paper
 
 > [W. Auzinger](http://www.asc.tuwien.ac.at/~winfried),
 > [H. Hofstätter](http://www.harald-hofstaetter.at),
@@ -15,7 +15,7 @@ needed for the analysis of error estimators for splitting methods, which is desc
 > [Defect-based local error estimators for splitting methods, with application to Schr&ouml;dinger equations, Part III. The nonlinear case](http://www.asc.tuwien.ac.at/preprint/2013/asc19x2013.pdf),
 > [J. Comput. and Appl. Math. 273 (2015), pp. 182-204](http://dx.doi.org/10.1016/j.cam.2014.06.012).
 
-Flows.jl consists of only ~700 lines of Julia code and is fully self-contained, 
+Flows.jl consists of only ~800 lines of Julia code and is fully self-contained, 
 of course with the (very relevant!) exception that it depends on the Julia standard library
 (but not on  additional Julia packages).
 
