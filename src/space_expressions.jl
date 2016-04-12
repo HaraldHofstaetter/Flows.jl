@@ -251,7 +251,7 @@ function _get_register_key(ex::AutonomousFunctionExpression)
 end    
 
 function _get_register_key(ex::FlowExpression)
-    string('E', _str_from_objref(ex.fun), ":", _str_from_objref(ex.x), ":", ex.dt_order, "|",
+    string('E', _str_from_objref(ex.fun), ":", _str_from_objref(ex.t), ":", _str_from_objref(ex.x), ":", ex.dt_order, "|",
         join([_str_from_objref(x)
             for x in sort(ex.d_args, 
             lt = (a,b) -> pointer_from_objref(a)<pointer_from_objref(b)) ],':'))

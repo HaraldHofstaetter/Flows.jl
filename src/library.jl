@@ -1,3 +1,5 @@
+global x_var = SpaceVariable("x_var")
+
 ### substitute ########################################
 
 # substitute TimeVariable by TimeExpression
@@ -57,6 +59,35 @@ function substitute(ex::FlowExpression, this::AutonomousFunction, by::Autonomous
     FlowExpression(  ex.fun==this ? by : ex.fun,
         ex.t, substitute(ex.x, this, by), ex.dt_order, [substitute(x, this, by) for x in ex.d_args]...)
 end
+
+#substitute AutonomousFunction by SpaceExpression
+
+substitute(ex::SpaceVariable, this::AutonomousFunction, by::SpaceExpression, u::SpaceVariable) = ex
+
+function substitute(ex::SpaceLinearCombination, this::AutonomousFunction, by::SpaceExpression, u::SpaceVariable)
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(substitute(x, this, by, u), c) for (x, c) in ex.terms])
+end
+
+function substitute(ex::AutonomousFunctionExpression, this::AutonomousFunction, by::SpaceExpression, u::SpaceVariable)
+    xx = substitute(ex.x, this, by, u)
+    d_args = [substitute(x, this, by, u)  for x in ex.d_args]
+    if this==ex.fun
+        r = substitute(by, u, x_var)
+        for d_arg in d_args
+            r = differential(r, x_var, d_arg)
+        end
+        return substitute(r, x_var, xx)
+    else
+        return AutonomousFunctionExpression(ex.fun, xx, d_args...)
+    end
+end
+
+function substitute(ex::FlowExpression, this::AutonomousFunction, by::SpaceExpression, u::SpaceVariable)
+    FlowExpression(ex.fun, ex.t, substitute(ex.x, this, by, u), ex.dt_order,
+        [substitute(x, this, by, u) for x in ex.d_args]...)
+end
+
+
 
 # TODO: to be completed ( Function by expression, Function by zero
 
@@ -118,7 +149,6 @@ function t_derivative(ex::AutonomousFunctionExpression, with_respect_to::TimeVar
     SpaceLinearCombination(Tuple{SpaceExpression, Real}[(x, 1) for x in terms])
 end
 
-global x_var = SpaceVariable("x_var")
 
 function t_derivative(ex::FlowExpression, with_respect_to::TimeVariable; flag::Bool=false)    
     f = coefficient(ex.t, with_respect_to)
