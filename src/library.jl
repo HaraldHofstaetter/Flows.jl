@@ -18,11 +18,11 @@ function substitute(ex::SpaceLinearCombination, this::TimeVariable, by::TimeExpr
 end
 
 function substitute(ex::AutonomousFunctionExpression, this::SpaceVariable, by::SpaceExpression)
-    ex.fun(substitute(ex.x, this, by), [substitute(ex.c, this, by) for x in ex.d_args]...)
+    ex.fun(substitute(ex.x, this, by), [substitute(x, this, by) for x in ex.d_args]...)
 end
 
 function substitute(ex::FlowExpression, this::SpaceVariable, by::SpaceExpression)
-    E(ex.fun, ex.t, substitute(ex.x, this, by), [substitute(ex.c, this, by) for x in ex.d_args]...)
+    E(ex.fun, ex.t, substitute(ex.x, this, by), [substitute(x, this, by) for x in ex.d_args]...)
 end
 
 # TODO: to be completed
@@ -112,4 +112,39 @@ function t_derivative(ex::FlowExpression, with_respect_to::TimeVariable; flag::B
     end      
     SpaceLinearCombination(Tuple{SpaceExpression, Real}[(x, 1) for x in terms])
 end
+
+### expand #############################################
+
+expand(x::SpaceVariable) = x
+
+function expand(ex::SpaceLinearCombination)   
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(expand(x), c) for (x, c) in ex.terms])
+end
+
+function _expander(ex::FunctionExpression, k::Integer)
+    if k > length(ex.d_args)
+        return ex
+    end
+    if !isa(ex.d_args[k], SpaceLinearCombination)
+        return _expander(ex, k+1)
+    end
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(_expander(
+          isa(ex,AutonomousFunctionExpression)?
+             AutonomousFunctionExpression(ex.fun, ex.x, vcat(ex.d_args[1:k-1], x, ex.d_args[k+1:end])...)
+          :
+             FlowExpression(ex.fun, ex.t, ex.x, ex.dt_order, vcat(ex.d_args[1:k-1], x, ex.d_args[k+1:end])...)
+
+        ,1), c) for (x,c) in ex.d_args[k].terms])
+end
+
+function expand(ex::AutonomousFunctionExpression)   
+    ex1 = AutonomousFunctionExpression(ex.fun, expand(ex.x), [expand(x) for x in ex.d_args]...)
+    return _expander(ex1, 1)
+end
+
+function expand(ex::FlowExpression)   
+    ex1 = FlowExpression(ex.fun, ex.t, expand(ex.x), ex.dt_order, [expand(x) for x in ex.d_args]...)
+    return _expander(ex1, 1)
+end
+
 

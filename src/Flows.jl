@@ -3,16 +3,16 @@ VERSION >= v"0.4.5" && __precompile__()
 module Flows
 
 import 
-    Base: (*), +, -, string, show, write, writemime
+    Base: (*), +, -, string, show, write, writemime, expand
 
 export TimeExpression, TimeVariable, TimeLinearCombination
 export SpaceExpression, SpaceVariable, SpaceLinearCombination
 export AutonomousFunction
 export FunctionExpression, AutonomousFunctionExpression, FlowExpression
-export E, coefficient, substitute, simplify
+export E, coefficient, substitute
 export print_time_expression_register, print_space_expression_register
 export t_zero, x_zero
-export differential, t_derivative
+export differential, t_derivative, expand
 
 export @t_vars, @x_vars, @funs
 
