@@ -12,7 +12,7 @@ needed for the analysis of error estimators of splitting methods, which is descr
 > [H. Hofstätter](http://www.harald-hofstaetter.at),
 > [O. Koch](http://othmar-koch.org), 
 > [M. Thalhammer](http://techmath.uibk.ac.at/mecht/),
-> [Defect-based local error estimators for splitting methods, with application to Schr&ouml;dinger equations, Part III. The nonlinear case](http://www.asc.tuwien.ac.at/preprint/2013/asc19x2013.pdf)>,
+> [Defect-based local error estimators for splitting methods, with application to Schr&ouml;dinger equations, Part III. The nonlinear case](http://www.asc.tuwien.ac.at/preprint/2013/asc19x2013.pdf),
 > [J. Comput. and Appl. Math. 273 (2015), pp. 182-204](http://dx.doi.org/10.1016/j.cam.2014.06.012).
 
 Flows.jl consists of only ~700 lines of Julia code and is fully self-contained, 
