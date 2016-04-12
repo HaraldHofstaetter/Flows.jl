@@ -1,31 +1,64 @@
 ### substitute ########################################
 
+# substitute TimeVariable by TimeExpression
+
 substitute(ex::TimeVariable, this::TimeVariable, by::TimeExpression) = (ex==this ? by : ex)
 
 function substitute(ex::TimeLinearCombination, this::TimeVariable, by::TimeExpression)
     TimeLinearCombination(Tuple{TimeExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
 
-substitute(ex::SpaceVariable, this::SpaceVariable, by::SpaceExpression) = (ex==this ? by : ex)
 substitute(ex::SpaceVariable, this::TimeVariable, by::TimeExpression) = ex 
-
-function substitute(ex::SpaceLinearCombination, this::SpaceVariable, by::SpaceExpression)
-    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
-end
 
 function substitute(ex::SpaceLinearCombination, this::TimeVariable, by::TimeExpression)
     SpaceLinearCombination(Tuple{SpaceExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
 
+function substitute(ex::AutonomousFunctionExpression, this::TimeVariable, by::TimeExpression)
+    AutonomousFunctionExpression(ex.fun, substitute(ex.x, this, by), [substitute(x, this, by) for x in ex.d_args]...)
+end
+
+function substitute(ex::FlowExpression, this::TimeVariable, by::TimeExpression)
+    FlowExpression(ex.fun, substitute(ex.t, this, by), substitute(ex.x, this, by), ex.dt_order,
+        [substitute(x, this, by) for x in ex.d_args]...)
+end
+
+# substitute SpaceVariable by SpaceExpression
+
+substitute(ex::SpaceVariable, this::SpaceVariable, by::SpaceExpression) = (ex==this ? by : ex)
+
+function substitute(ex::SpaceLinearCombination, this::SpaceVariable, by::SpaceExpression)
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
+end
+
 function substitute(ex::AutonomousFunctionExpression, this::SpaceVariable, by::SpaceExpression)
-    ex.fun(substitute(ex.x, this, by), [substitute(x, this, by) for x in ex.d_args]...)
+    AutonomousFunctionExpression(ex.fun, substitute(ex.x, this, by), [substitute(x, this, by) for x in ex.d_args]...)
 end
 
 function substitute(ex::FlowExpression, this::SpaceVariable, by::SpaceExpression)
-    E(ex.fun, ex.t, substitute(ex.x, this, by), [substitute(x, this, by) for x in ex.d_args]...)
+    FlowExpression(ex.fun, ex.t, substitute(ex.x, this, by), ex.dt_order,
+        [substitute(x, this, by) for x in ex.d_args]...)
 end
 
-# TODO: to be completed
+# substitute AutonomousFunction by AutonomousFunction
+
+substitute(ex::SpaceVariable, this::AutonomousFunction, by::AutonomousFunction) = ex
+
+function substitute(ex::SpaceLinearCombination, this::AutonomousFunction, by::AutonomousFunction)
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
+end
+
+function substitute(ex::AutonomousFunctionExpression, this::AutonomousFunction, by::AutonomousFunction)
+    AutonomousFunctionExpression( ex.fun==this ? by : ex.fun, 
+        substitute(ex.x, this, by), [substitute(x, this, by) for x in ex.d_args]...)
+end
+
+function substitute(ex::FlowExpression, this::AutonomousFunction, by::AutonomousFunction)
+    FlowExpression(  ex.fun==this ? by : ex.fun,
+        ex.t, substitute(ex.x, this, by), ex.dt_order, [substitute(x, this, by) for x in ex.d_args]...)
+end
+
+# TODO: to be completed ( Function by expression, Function by zero
 
 ### differential #######################################
 
@@ -95,7 +128,7 @@ function t_derivative(ex::FlowExpression, with_respect_to::TimeVariable; flag::B
         if !flag
             t = AutonomousFunctionExpression(ex.fun, FlowExpression(ex.fun, ex.t, x_var, 0))
         else
-            t = FlowExpression(ex.fun, ex.t, x_var, 0, AutonomusFunctionExpression(ex.fun, x_var))
+            t = FlowExpression(ex.fun, ex.t, x_var, 0, AutonomousFunctionExpression(ex.fun, x_var))
         end
         for d_arg in ex.d_args
             t = differential(t, x_var, d_arg)
@@ -112,6 +145,7 @@ function t_derivative(ex::FlowExpression, with_respect_to::TimeVariable; flag::B
     end      
     SpaceLinearCombination(Tuple{SpaceExpression, Real}[(x, 1) for x in terms])
 end
+
 
 ### expand #############################################
 
@@ -146,5 +180,55 @@ function expand(ex::FlowExpression)
     ex1 = FlowExpression(ex.fun, ex.t, expand(ex.x), ex.dt_order, [expand(x) for x in ex.d_args]...)
     return _expander(ex1, 1)
 end
+
+
+### reduce_order########################################
+
+reduce_order(x::SpaceVariable) = x
+
+function reduce_order(ex::SpaceLinearCombination)   
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(reduce_order(x), c) for (x, c) in ex.terms])
+end
+
+function reduce_order(ex::AutonomousFunctionExpression)
+    ex.fun(reduce_order(ex.x), [reduce_order(x) for x in ex.d_args]...)
+end
+
+function _reduce_order_init(m::Integer)
+    global ro_m = m 
+    global ro_F = AutonomousFunction("F")
+    global ro_t = TimeVariable("t")
+    global ro_u = SpaceVariable("u")
+    global ro_vars = SpaceVariable[ SpaceVariable(string("v",k)) for k=1:m ]
+    global ro_expr = Array{SpaceExpression}(m)
+    for k=1:m
+        ro_expr[k] = ( t_derivative(FlowExpression(ro_F, ro_t, ro_u, 0, ro_vars[1:k-1]...), ro_t, flag=false)
+                      -t_derivative(FlowExpression(ro_F, ro_t, ro_u, 0, ro_vars[1:k-1]...), ro_t, flag=true)
+                      +FlowExpression(ro_F, ro_t, ro_u, 0, AutonomousFunctionExpression(ro_F, ro_u), ro_vars[1:k-1]...) )
+    end
+end
+
+function reduce_order(ex::FlowExpression)
+    Fu = AutonomousFunctionExpression(ex.fun, ex.x)
+    j = -1
+    m = length(ex.d_args)
+    for i = 1:m
+        if ex.d_args[i]==Fu
+            j=i
+            break
+        end
+    end
+    if j>=1 && m<=ro_m
+        other_args = vcat(ex.d_args[1:j-1], ex.d_args[j+1:end])
+        r = substitute(substitute(substitute(ro_expr[m], ro_F, ex.fun), ro_t, ex.t), ro_u, reduce_order(ex.x))
+        for i = 1:m-1
+            r = substitute(r, ro_vars[i], reduce_order(other_args[i]))
+        end
+        return reduce_order(r)
+    else
+        return FlowExpression(ex.fun, ex.t, reduce_order(ex.x), ex.dt_order, [reduce_order(x) for x in ex.d_args]...)
+    end
+end
+
 
 

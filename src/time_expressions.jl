@@ -57,6 +57,7 @@ TimeLinearCombination(x...) = TimeLinearCombination(Tuple{TimeExpression, Real}[
 +(a::TimeExpression, b::TimeExpression) = TimeLinearCombination(a,1, b, 1)
 -(a::TimeExpression, b::TimeExpression) = TimeLinearCombination(a,1, b,-1)
 -(a::TimeExpression) = (-1)*a
++(a::TimeExpression) = a
 *(f::Real, ex::TimeVariable) = TimeLinearCombination(ex,f)
 *(f::Real, ex::TimeLinearCombination) = TimeLinearCombination( Tuple{TimeExpression, Real}[ (x, f*c) for (x, c) in ex.terms ] )
 *(ex::TimeExpression, f::Real) = f*ex

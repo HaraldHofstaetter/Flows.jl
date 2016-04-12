@@ -23,6 +23,7 @@ show(io::IO, x::SpaceVariable) = print(io, _str(x))
 immutable SpaceLinearCombination <: SpaceExpression
    terms :: Array{Tuple{SpaceExpression, Real},1}
    function SpaceLinearCombination(terms :: Array{Tuple{SpaceExpression, Real},1}, dummy::Int)
+       # dummy only to make it distinguishable from the constructor below
        new(terms)
    end    
 end
@@ -67,6 +68,7 @@ SpaceLinearCombination(x...) = SpaceLinearCombination(Tuple{SpaceExpression, Rea
 +(a::SpaceExpression, b::SpaceExpression) = SpaceLinearCombination(a,1, b, 1)
 -(a::SpaceExpression, b::SpaceExpression) = SpaceLinearCombination(a,1, b,-1)
 -(a::SpaceExpression) = (-1)*a
++(a::SpaceExpression) = a
 *(f::Real, ex::SpaceExpression) = SpaceLinearCombination(ex,f)
 *(f::Real, ex::SpaceLinearCombination) = SpaceLinearCombination( Tuple{SpaceExpression, Real}[ (x, f*c) for (x, c) in ex.terms ])
 *(ex::SpaceExpression, f::Real) = f*ex
