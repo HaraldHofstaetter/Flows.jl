@@ -3,7 +3,7 @@
 substitute(ex::TimeVariable, this::TimeVariable, by::TimeExpression) = (ex==this ? by : ex)
 
 function substitute(ex::TimeLinearCombination, this::TimeVariable, by::TimeExpression)
-    TimeLinearCombination([(substitute(x, this, by), c) for (x, c) in ex.terms])
+    TimeLinearCombination(Tuple{TimeExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
 
 substitute(ex::SpaceVariable, this::SpaceVariable, by::SpaceExpression) = (ex==this ? by : ex)

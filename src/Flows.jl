@@ -30,7 +30,7 @@ include("constructors.jl")
 include("library.jl")
 
 function __init__()
-    global t_zero = _register(TimeLinearCombination([])) 
+    global t_zero = _register(TimeLinearCombination(Tuple{TimeExpression, Real}[],0)) 
     global x_zero = _register(SpaceLinearCombination(Tuple{SpaceExpression, Real}[], 0)) 
 end
 

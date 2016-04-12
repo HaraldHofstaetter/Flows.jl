@@ -30,6 +30,7 @@ end
 function SpaceLinearCombination(terms :: Array{Tuple{SpaceExpression, Real},1})
     d = Dict{SpaceExpression,Real}()
     for (x,c) in terms
+        #@assert isa(c, Real) "Real expected"
         if isa(x, SpaceLinearCombination)
             # Nested SpaceLinearCombinations are expanded into parent SpaceLinearCombination
             for (x1, c1) in x.terms
@@ -37,6 +38,7 @@ function SpaceLinearCombination(terms :: Array{Tuple{SpaceExpression, Real},1})
                 d[x1] += c*c1
             end
         else
+            #@assert isa(x, SpaceExpression) "SpaceExpression expected"
             get!(d, x, 0) 
             d[x] += c
         end

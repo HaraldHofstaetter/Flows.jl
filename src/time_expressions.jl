@@ -10,15 +10,55 @@ show(io::IO, t::TimeVariable) = print(io, _str(t))
 
 immutable TimeLinearCombination <: TimeExpression
    terms :: Array{Tuple{TimeExpression, Real},1}
+   function TimeLinearCombination(terms :: Array{Tuple{TimeExpression, Real},1}, dummy::Int)
+       # dummy only to make it distinguishable from the constructor below
+       new(terms)
+   end    
 end
 
-TimeLinearCombination(x...) = simplify(TimeLinearCombination([ (x[i],x[i+1]) for i=1:2:length(x) ]))
+function TimeLinearCombination(terms :: Array{Tuple{TimeExpression, Real},1})
+    d = Dict{TimeExpression,Real}()
+    for (x,c) in terms
+        #@assert isa(c, Real) "Real expected"
+        if isa(x, TimeLinearCombination)
+            # Nested TimeLinearCombinations are expanded into parent TimeLinearCombination
+            for (x1, c1) in x.terms
+                get!(d, x1, 0) 
+                d[x1] += c*c1
+            end
+        else
+            #@assert isa(x, TimeExpression) "TimeExpression expected"
+            get!(d, x, 0) 
+            d[x] += c
+        end
+    end
+    for (key, val) in d
+        # Terms with coefficient 0 are deleted
+        if val == 0
+            delete!(d, key)
+        end
+    end    
+    if length(d) == 1 
+        # Each linear combination consisting of only one term with coefficient 1 
+        # is replaced by this term.
+        # Note that this term has been already registered.
+        for (key, val) in d
+            if val==1
+                return key
+            end    
+        end
+    end    
+    return _register(TimeLinearCombination(Tuple{TimeExpression, Real}[(key,val) for (key, val) in d], 0))
+end
+
+
+TimeLinearCombination(x...) = TimeLinearCombination(Tuple{TimeExpression, Real}[ (x[i],x[i+1]) for i=1:2:length(x) ])
 
 +(a::TimeExpression, b::TimeExpression) = TimeLinearCombination(a,1, b, 1)
 -(a::TimeExpression, b::TimeExpression) = TimeLinearCombination(a,1, b,-1)
 -(a::TimeExpression) = (-1)*a
 *(f::Real, ex::TimeVariable) = TimeLinearCombination(ex,f)
-*(f::Real, ex::TimeLinearCombination) = TimeLinearCombination( [ (x, f*c) for (x, c) in ex.terms ] )
+*(f::Real, ex::TimeLinearCombination) = TimeLinearCombination( Tuple{TimeExpression, Real}[ (x, f*c) for (x, c) in ex.terms ] )
 *(ex::TimeExpression, f::Real) = f*ex
 
 function _str(ex::TimeLinearCombination; flat::Bool=false, latex::Bool=false) 
@@ -40,40 +80,6 @@ show(io::IO, ex::TimeLinearCombination) = print(io, _str(ex))
 writemime(io::IO, ::MIME"application/x-latex", ex::TimeExpression) = write(io, "\$", _str(ex, latex=true), "\$")
 writemime(io::IO, ::MIME"text/latex",  ex::TimeExpression) = write(io, "\$", _str(ex, latex=true), "\$")
 
-
-function _expand(ex::TimeLinearCombination)
-    TimeLinearCombination(
-        vcat([ typeof(x)==TimeVariable ? (x, c) : (c*_expand(x)).terms for (x, c) in ex.terms ]...))
-end
-
-function _collect(ex::TimeLinearCombination)
-    d = Dict(ex.terms)
-    for key in keys(d)
-        d[key] = 0
-    end    
-    for (key, val) in ex.terms
-        d[key] += val
-    end
-    for (key, val) in d
-        if val == 0
-            delete!(d, key)
-        end
-    end    
-    if length(d) == 1 
-        #Each linear combination consisting of only one term with coefficient 1 
-        #is replaced by this term.
-        #Note that this term must have been already registered.
-        for (key, val) in d
-            if val==1
-                return key
-            end    
-        end
-    end    
-    return _register(TimeLinearCombination([(key,val) for (key, val) in d]))
-end
-
-simplify(v::TimeVariable) = v
-simplify(ex::TimeLinearCombination) = _collect(_expand(ex))
 
 coefficient(ex::TimeVariable, v::TimeVariable) = (ex==v ? 1 : 0)
 
