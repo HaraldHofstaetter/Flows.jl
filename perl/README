@@ -1,0 +1,3 @@
+This is old Perl code on which the new Julia package is based. The Perl code is no longer 
+maintained and is almost impossible to understand. (The strange peculiarities of the Perl 
+syntax were the main motivation to reimplement this stuff in Julia...)
