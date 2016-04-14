@@ -1,5 +1,5 @@
 # Flows.jl
-A Julia package for the symbolic manipulation of flows of differential equations.
+A Julia package for the symbolic manipulation of flows of nonlinear evolution equations.
 
 Flows.jl is a reimplementation of [old Perl code](https://github.com/HaraldHofstaetter/Flows.jl/tree/master/perl), 
 which is no longer maintained and is almost impossible to understand.
