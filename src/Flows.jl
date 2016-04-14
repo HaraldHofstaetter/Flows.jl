@@ -9,11 +9,11 @@ export TimeExpression, TimeVariable, TimeLinearCombination
 export SpaceExpression, SpaceVariable, SpaceLinearCombination
 export AutonomousFunction
 export FunctionExpression, AutonomousFunctionExpression, FlowExpression
-export E, coefficient, substitute
+export E, coefficient, substitute, commutator
 export print_time_expression_register, print_space_expression_register
 export t_zero, x_zero
 export differential, t_derivative, expand, reduce_order
-export commute_FE2DEF, commute_DEF2FE
+export FE2DEF, DEF2FE
 
 export @t_vars, @x_vars, @funs
 

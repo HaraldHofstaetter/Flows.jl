@@ -91,6 +91,17 @@ end
 
 # TODO: to be completed ( Function by expression, Function by zero
 
+### commutator ########################################
+
+commutator(F::AutonomousFunction, G::AutonomousFunction, u::SpaceExpression) = F(u,G(u)) - G(u,F(u))
+
+# double commutator [F,[G,H]] 
+function commutator(F::AutonomousFunction, G::AutonomousFunction, H::AutonomousFunction, u::SpaceExpression)
+	v = SpaceVariable("v") 
+        X = AutonomousFunction("X")
+        substitute(substitute(commutator(F,X,v), X , commutator(G,H,v), v), v, u)
+end
+
 ### differential #######################################
 
 differential(ex::SpaceVariable, with_respect_to::SpaceVariable, applied_to::SpaceExpression) =
@@ -260,61 +271,61 @@ function reduce_order(ex::FlowExpression)
     end
 end
 
-### commute_FE2DEF #####################################
+### FE2DEF #####################################
 
-commute_FE2DEF(x::SpaceVariable) = x
+FE2DEF(x::SpaceVariable) = x
 
-function commute_FE2DEF(ex::SpaceLinearCombination)   
-    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(commute_FE2DEF(x), c) for (x, c) in ex.terms])
+function FE2DEF(ex::SpaceLinearCombination)   
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(FE2DEF(x), c) for (x, c) in ex.terms])
 end
 
-function commute_FE2DEF(ex::AutonomousFunctionExpression) # TODO: check this !!!
+function FE2DEF(ex::AutonomousFunctionExpression) # TODO: check this !!!
     if isa(ex.x, FlowExpression) && ex.fun == ex.x.fun &&  length(ex.x.d_args)==0 && length(ex.d_args)==0
-        xx = commute_FE2DEF(ex.x.x)
-        return FlowExpression(ex,fun, ex.x.t, xx, 0, AutonomousFunctionExpression(ex.fun, xx)) 
+        xx = FE2DEF(ex.x.x)
+        return FlowExpression(ex.fun, ex.x.t, xx, 0, AutonomousFunctionExpression(ex.fun, xx)) 
     elseif (isa(ex.x, FlowExpression) && ex.fun == ex.x.fun &&  length(ex.x.d_args)==0 && length(ex.d_args)==1
             && isa(ex.d_args[1], FlowExpression) && ex.fun == ex.d_args[1].fun && length(ex.d_args[1].d_args)==1
             && ex.x.x==ex.d_args[1].x )
-        xx = commute_FE2DEF(ex.x.x)
-        v =  commute_FE2DEF(ex.d_args[1].d_args[1])
+        xx = FE2DEF(ex.x.x)
+        v =  FE2DEF(ex.d_args[1].d_args[1])
         return (FlowExpression(ex.fun, ex.x.t, xx, 0,  AutonomousFunctionExpression(ex.fun, xx, v)) 
                +FlowExpression(ex.fun, ex.x.t, xx, 0,  AutonomousFunctionExpression(ex.fun, xx), v) ) 
     else
-       return AutonomousFunctionExpression(ex.fun, commute_FE2DEF(ex.x), [commute_FE2DEF(x) for x in ex.d_args]...)
+       return AutonomousFunctionExpression(ex.fun, FE2DEF(ex.x), [FE2DEF(x) for x in ex.d_args]...)
     end   
 end
 
-function commute_FE2DEF(ex::FlowExpression)   
-    FlowExpression(ex.fun, ex.t, commute_FE2DEF(ex.x), ex.dt_order, [commute_FE2DEF(x) for x in ex.d_args]...)
+function FE2DEF(ex::FlowExpression)   
+    FlowExpression(ex.fun, ex.t, FE2DEF(ex.x), ex.dt_order, [FE2DEF(x) for x in ex.d_args]...)
 end
 
-### commute_DEF2FE #####################################
+### DEF2FE #####################################
 
-commute_DEF2FE(x::SpaceVariable) = x
+DEF2FE(x::SpaceVariable) = x
 
-function commute_DEF2FE(ex::SpaceLinearCombination)   
-    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(commute_DEF2FE(x), c) for (x, c) in ex.terms])
+function DEF2FE(ex::SpaceLinearCombination)   
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(DEF2FE(x), c) for (x, c) in ex.terms])
 end
 
-function commute_DEF2FE(ex::AutonomousFunctionExpression)   
-    AutonomousFunctionExpression(ex.fun, commute_DEF2FE(ex.x), [commute_DEF2FE(x) for x in ex.d_args]...)
+function DEF2FE(ex::AutonomousFunctionExpression)   
+    AutonomousFunctionExpression(ex.fun, DEF2FE(ex.x), [DEF2FE(x) for x in ex.d_args]...)
 end
 
-function commute_DEF2FE(ex::FlowExpression)  # TODO: check this !!!
+function DEF2FE(ex::FlowExpression)  # TODO: check this !!!
     if (length(ex.d_args)==1 && isa(ex.d_args[1], AutonomousFunctionExpression) &&   ex.fun==ex.d_args[1].fun 
        && ex.x==ex.d_args[1].x && length(ex.d_args[1].d_args)==0 )
         r = ex.d_args[1]
-        return AutonomousFunctionExpression(r.fun, FlowExpression(ex.fun, ex.t, commute_DEF2FE(ex.x), ex.dt_order))
+        return AutonomousFunctionExpression(r.fun, FlowExpression(ex.fun, ex.t, DEF2FE(ex.x), ex.dt_order))
     elseif (length(ex.d_args)==1 && isa(ex.d_args[1], AutonomousFunctionExpression) &&   ex.fun==ex.d_args[1].fun 
        && ex.x==ex.d_args[1].x && length(ex.d_args[1].d_args)==1 )
         r = ex.d_args[1]
-        v = commute_DEF2FE(ex.d_args[1].d_args[1])
-        x = commute_DEF2FE(ex.x)
+        v = DEF2FE(ex.d_args[1].d_args[1])
+        x = DEF2FE(ex.x)
         return (AutonomousFunctionExpression(r.fun, FlowExpression(ex.fun, ex.t, x, ex.dt_order), 
                                             FlowExpression(ex.fun, ex.t, x, ex.dt_order, v)) 
               - FlowExpression(ex.fun, ex.t, x, ex.dt_order, AutonomousFunctionExpression(r.fun, x) ,v))
     else
-        return FlowExpression(ex.fun, ex.t, commute_DEF2FE(ex.x), ex.dt_order, [commute_DEF2FE(x) for x in ex.d_args]...)
+        return FlowExpression(ex.fun, ex.t, DEF2FE(ex.x), ex.dt_order, [DEF2FE(x) for x in ex.d_args]...)
     end
 end
 
