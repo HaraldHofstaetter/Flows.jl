@@ -25,6 +25,11 @@ function substitute(ex::FlowExpression, this::TimeVariable, by::TimeExpression)
         [substitute(x, this, by) for x in ex.d_args]...)
 end
 
+function substitute(ex::NonAutonomousFunctionExpression, this::TimeVariable, by::TimeExpression)
+    NonAutonomousFunctionExpression(ex.fun, substitute(ex.t, this, by), substitute(ex.x, this, by), ex.dt_order,
+        [substitute(x, this, by) for x in ex.d_args]...)
+end
+
 # substitute SpaceVariable by SpaceExpression
 
 substitute(ex::SpaceVariable, this::SpaceVariable, by::SpaceExpression) = (ex==this ? by : ex)
@@ -39,6 +44,11 @@ end
 
 function substitute(ex::FlowExpression, this::SpaceVariable, by::SpaceExpression)
     FlowExpression(ex.fun, ex.t, substitute(ex.x, this, by), ex.dt_order,
+        [substitute(x, this, by) for x in ex.d_args]...)
+end
+
+function substitute(ex::NonAutonomousFunctionExpression, this::SpaceVariable, by::SpaceExpression)
+    NonAutonomousFunctionExpression(ex.fun, ex.t, substitute(ex.x, this, by), ex.dt_order,
         [substitute(x, this, by) for x in ex.d_args]...)
 end
 
@@ -59,6 +69,35 @@ function substitute(ex::FlowExpression, this::AutonomousFunction, by::Autonomous
     FlowExpression(  ex.fun==this ? by : ex.fun,
         ex.t, substitute(ex.x, this, by), ex.dt_order, [substitute(x, this, by) for x in ex.d_args]...)
 end
+
+function substitute(ex::NonAutonomousFunctionExpression, this::AutonomousFunction, by::AutonomousFunction)
+    NonAutonomousFunctionExpression(  ex.fun,
+        ex.t, substitute(ex.x, this, by), ex.dt_order, [substitute(x, this, by) for x in ex.d_args]...)
+end
+
+# substitute NonAutonomousFunction by NonAutonomousFunction
+
+substitute(ex::SpaceVariable, this::NonAutonomousFunction, by::NonAutonomousFunction) = ex
+
+function substitute(ex::SpaceLinearCombination, this::NonAutonomousFunction, by::NonAutonomousFunction)
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
+end
+
+function substitute(ex::AutonomousFunctionExpression, this::NonAutonomousFunction, by::NonAutonomousFunction)
+    AutonomousFunctionExpression( ex.fun, 
+        substitute(ex.x, this, by), [substitute(x, this, by) for x in ex.d_args]...)
+end
+
+function substitute(ex::FlowExpression, this::NonAutonomousFunction, by::NonAutonomousFunction)
+    FlowExpression(  ex.fun,
+        ex.t, substitute(ex.x, this, by), ex.dt_order, [substitute(x, this, by) for x in ex.d_args]...)
+end
+
+function substitute(ex::NonAutonomousFunctionExpression, this::NonAutonomousFunction, by::NonAutonomousFunction)
+    NonAutonomousFunctionExpression(  ex.fun==this ? by : ex.fun,
+        ex.t, substitute(ex.x, this, by), ex.dt_order, [substitute(x, this, by) for x in ex.d_args]...)
+end
+
 
 #substitute AutonomousFunction by SpaceExpression
 
@@ -87,9 +126,15 @@ function substitute(ex::FlowExpression, this::AutonomousFunction, by::SpaceExpre
         [substitute(x, this, by, u) for x in ex.d_args]...)
 end
 
+function substitute(ex::NonAutonomousFunctionExpression, this::AutonomousFunction, by::SpaceExpression, 
+                    u::SpaceVariable)
+    NonAutonomousFunctionExpression(ex.fun, ex.t, substitute(ex.x, this, by, u), ex.dt_order,
+        [substitute(x, this, by, u) for x in ex.d_args]...)
+end
 
 
-# TODO: to be completed ( Function by expression, Function by zero
+
+# TODO: to be completed ( NonAutonomousFunction by expression, Function by zero
 
 ### commutator ########################################
 
@@ -137,6 +182,19 @@ function differential(ex::FlowExpression, with_respect_to::SpaceVariable, applie
     SpaceLinearCombination(Tuple{SpaceExpression, Real}[(x, 1) for x in terms])
 end
 
+function differential(ex::NonAutonomousFunctionExpression, with_respect_to::SpaceVariable,
+                      applied_to::SpaceExpression)    
+    terms = Array{SpaceExpression}(length(ex.d_args)+1)
+    dx = differential(ex.x, with_respect_to, applied_to)   
+    terms[1] = NonAutonomousFunctionExpression(ex.fun, ex.t, ex.x, ex.dt_order, vcat(ex.d_args, dx)...)
+    for i=1:length(ex.d_args)
+          d_args = copy(ex.d_args)
+          d_args[i] = differential(ex.d_args[i], with_respect_to, applied_to)
+          terms[i+1] = NonAutonomousFunctionExpression(ex.fun, ex.t, ex.x, ex.dt_order, d_args...)
+    end      
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(x, 1) for x in terms])
+end
+
 
 ### t_derivative #######################################
 
@@ -159,7 +217,6 @@ function t_derivative(ex::AutonomousFunctionExpression, with_respect_to::TimeVar
     end      
     SpaceLinearCombination(Tuple{SpaceExpression, Real}[(x, 1) for x in terms])
 end
-
 
 function t_derivative(ex::FlowExpression, with_respect_to::TimeVariable; flag::Bool=false)    
     f = coefficient(ex.t, with_respect_to)
@@ -187,6 +244,26 @@ function t_derivative(ex::FlowExpression, with_respect_to::TimeVariable; flag::B
     SpaceLinearCombination(Tuple{SpaceExpression, Real}[(x, 1) for x in terms])
 end
 
+function t_derivative(ex::NonAutonomousFunctionExpression, with_respect_to::TimeVariable; flag::Bool=false)    
+    f = coefficient(ex.t, with_respect_to)
+    dx = t_derivative(ex.x, with_respect_to, flag=flag)    
+    terms = Array{SpaceExpression}(length(ex.d_args)+2)
+    if f != 0
+        #terms[1] = f*NonAutonomousFunctionExpression(ex.fun, ex.t, ex.x, ex.dt_order+1, vcat(ex.d_args, dx)...)
+        terms[1] = f*NonAutonomousFunctionExpression(ex.fun, ex.t, ex.x, ex.dt_order+1, ex.d_args...)
+    else
+        terms[1] = x_zero
+    end
+    terms[2] = NonAutonomousFunctionExpression(ex.fun, ex.t, ex.x, ex.dt_order, vcat(ex.d_args, dx)...)
+    for i=1:length(ex.d_args)
+          d_args = copy(ex.d_args)
+          d_args[i] = t_derivative(ex.d_args[i], with_respect_to, flag=flag)
+          terms[i+2] = NonAutonomousFunctionExpression(ex.fun, ex.t, ex.x, ex.dt_order, d_args...)
+    end      
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(x, 1) for x in terms])
+end
+
+
 
 ### expand #############################################
 
@@ -207,8 +284,11 @@ function _expander(ex::FunctionExpression, k::Integer)
           isa(ex,AutonomousFunctionExpression)?
              AutonomousFunctionExpression(ex.fun, ex.x, vcat(ex.d_args[1:k-1], x, ex.d_args[k+1:end])...)
           :
-             FlowExpression(ex.fun, ex.t, ex.x, ex.dt_order, vcat(ex.d_args[1:k-1], x, ex.d_args[k+1:end])...)
-
+          (isa(ex,NonAutonomousFunctionExpression)?
+             NonAutonomousFunctionExpression(ex.fun, ex.t, ex.x, ex.dt_order, vcat(ex.d_args[1:k-1], 
+                                             x, ex.d_args[k+1:end])...)
+          :
+             FlowExpression(ex.fun, ex.t, ex.x, ex.dt_order, vcat(ex.d_args[1:k-1], x, ex.d_args[k+1:end])...))
         ,1), c) for (x,c) in ex.d_args[k].terms])
 end
 
@@ -222,6 +302,11 @@ function expand(ex::FlowExpression)
     return _expander(ex1, 1)
 end
 
+function expand(ex::NonAutonomousFunctionExpression)   
+    ex1 = NonAutonomousFunctionExpression(ex.fun, ex.t, expand(ex.x), ex.dt_order, [expand(x) for x in ex.d_args]...)
+    return _expander(ex1, 1)
+end
+
 
 ### reduce_order########################################
 
@@ -231,8 +316,13 @@ function reduce_order(ex::SpaceLinearCombination)
     SpaceLinearCombination(Tuple{SpaceExpression, Real}[(reduce_order(x), c) for (x, c) in ex.terms])
 end
 
-function reduce_order(ex::AutonomousFunctionExpression)
-    ex.fun(reduce_order(ex.x), [reduce_order(x) for x in ex.d_args]...)
+function reduce_order(ex::AutonomousFunctionExpression)   
+    AutonomousFunctionExpression(ex.fun, reduce_order(ex.x), [reduce_order(x) for x in ex.d_args]...)
+end
+
+function reduce_order(ex::NonAutonomousFunctionExpression)   
+    NonAutonomousFunctionExpression(ex.fun, ex.t, reduce_order(ex.x), ex.dt_order, 
+                                   [reduce_order(x) for x in ex.d_args]...)
 end
 
 function _reduce_order_init(m::Integer)
@@ -299,6 +389,10 @@ function FE2DEF(ex::FlowExpression)
     FlowExpression(ex.fun, ex.t, FE2DEF(ex.x), ex.dt_order, [FE2DEF(x) for x in ex.d_args]...)
 end
 
+function FE2DEF(ex::NonAutonomousFunctionExpression)   
+    NonAutonomousFunctionExpression(ex.fun, ex.t, FE2DEF(ex.x), ex.dt_order, [FE2DEF(x) for x in ex.d_args]...)
+end
+
 ### DEF2FE #####################################
 
 DEF2FE(x::SpaceVariable) = x
@@ -327,5 +421,9 @@ function DEF2FE(ex::FlowExpression)  # TODO: check this !!!
     else
         return FlowExpression(ex.fun, ex.t, DEF2FE(ex.x), ex.dt_order, [DEF2FE(x) for x in ex.d_args]...)
     end
+end
+
+function DEF2FE(ex::NonAutonomousFunctionExpression)   
+    NonAutonomousFunctionExpression(ex.fun, DEF2FE(ex.x), [DEF2FE(x) for x in ex.d_args]...)
 end
 

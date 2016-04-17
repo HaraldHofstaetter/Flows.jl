@@ -43,3 +43,18 @@ macro funs(x...)
     eval(Main, q)
 end
 
+macro nonautonomous_funs(x...) 
+    q=Expr(:block)
+    if length(x) == 1 && isa(x[1],Expr)
+        @assert x[1].head === :tuple "@nonautonomous_funs expected a list of symbols"
+        x = x[1].args
+    end
+    for s in x
+        @assert isa(s,Symbol) "@nonautonomous_funs expected a list of symbols"
+        push!(q.args, Expr(:(=), s, Expr(:call, :NonAutonomousFunction, Expr(:quote, string(s)))))
+    end
+    push!(q.args, Expr(:tuple, x...))
+    eval(Main, q)
+end
+
+

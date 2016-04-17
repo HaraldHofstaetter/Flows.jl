@@ -1,10 +1,16 @@
-immutable AutonomousFunction
+abstract FunctionObject
+
+immutable AutonomousFunction <: FunctionObject
    name::AbstractString
 end
 
-_str(f::AutonomousFunction; flat::Bool=false, latex::Bool=false) = f.name
-string(f::AutonomousFunction) = f.name
-show(io::IO, f::AutonomousFunction) = print(io, string(f))
+immutable NonAutonomousFunction <: FunctionObject
+   name::AbstractString
+end
+
+_str(f::FunctionObject; flat::Bool=false, latex::Bool=false) = f.name
+string(f::FunctionObject) = f.name
+show(io::IO, f::FunctionObject) = print(io, string(f))
 
 ###################################################################################################
 # Essentially the same stuff as in time_expressions.jl with Time substituted by Space...
@@ -95,7 +101,7 @@ immutable AutonomousFunctionExpression <: FunctionExpression
     fun::AutonomousFunction
     t::TimeExpression # = t_zero 
     x::SpaceExpression
-    dt_order::Int # = 0
+    dt_order::Integer # = 0
     d_args::Array{SpaceExpression,1}
     function AutonomousFunctionExpression(fun::AutonomousFunction, 
                                           x::SpaceExpression, 
@@ -113,7 +119,7 @@ end
 
 #overloaded 'call' allows syntax 'F(x)' instead of 'AutonomousFunctionExpression(F, x)'
 function call(F::AutonomousFunction, x::SpaceExpression, d_args...)
-    AutonomousFunctionExpression(F::AutonomousFunction, x::SpaceExpression, d_args...) 
+    AutonomousFunctionExpression(F, x, d_args...) 
 end
 
 function _str(ex::AutonomousFunctionExpression; flat::Bool=false, latex::Bool=false)
@@ -154,16 +160,96 @@ end
 string(ex::AutonomousFunctionExpression) = _str(ex)
 show(io::IO, ex::AutonomousFunctionExpression) = print(io, _str(ex))
 
+immutable NonAutonomousFunctionExpression <: FunctionExpression
+    fun::NonAutonomousFunction
+    t::TimeExpression 
+    x::SpaceExpression
+    dt_order::Integer 
+    d_args::Array{SpaceExpression,1}
+    function NonAutonomousFunctionExpression(fun::NonAutonomousFunction, 
+                            t::TimeExpression, 
+                            x::SpaceExpression, 
+                            dt_order::Integer,
+                            d_args...)
+        for d_arg in d_args            
+            if d_arg==x_zero
+                # If the NonAutonomousFunctionExpression is a derivative (i.e. a multilinear map),
+                # and one argument of this map is 0 then the NonAutonomousFunctionExpression itself 
+                # shall be zero
+                return x_zero
+            end
+        end     
+        _register(new(fun, t, x, dt_order, SpaceExpression[d_arg for d_arg in d_args]))
+    end    
+end
+
+#overloaded 'call' allows syntax 'F(t,x)' instead of 'NonAutonomousFunctionExpression(F, t, x, 0)'
+function call(F::NonAutonomousFunction, t::TimeExpression, x::SpaceExpression, d_args...)
+    NonAutonomousFunctionExpression(F, t, x, 0, d_args...) 
+end
+#'F(dt_order, t,x)' instead of 'NonAutonomousFunctionExpression(F, t, x, dt_order)'
+function call(F::NonAutonomousFunction, dt_order::Integer, t::TimeExpression, x::SpaceExpression, d_args...)
+    NonAutonomousFunctionExpression(F, t, x, dt_order, d_args...) 
+end
+
+function _str(ex::NonAutonomousFunctionExpression; flat::Bool=false, latex::Bool=false)
+    n1 = ex.dt_order
+    n2 = length(ex.d_args)
+    if latex
+        s = ""
+        if n1>=1
+            s = string(s, "\\partial_{1}")
+        end    
+        if n1>=2
+            s = string(s, "^{", n1, "}")
+        end    
+        if n2>=1
+            s = string(s, "\\partial_{2}")
+        end    
+        if n2>=2
+            s = string(s, "^{", n2, "}")
+        end    
+        s =  string(s, _str(ex.fun, latex=true))
+    else
+        s =  _str(ex.fun)
+        if n1>0 || n2>0 
+            s = string(s, "{", n1, ",", n2, "}")
+        end
+    end
+    s = string(s, latex?"(":"[",
+        flat?_str_flat_arg_name(ex.t):_str(ex.t, latex=latex),
+        ",",
+        flat?_str_flat_arg_name(ex.x):_str(ex.x, latex=latex),
+        latex?")":"]")
+    if latex && n2==1
+        x = ex.d_args[1]
+        s = string(s, "\\cdot ", 
+            isa(x, SpaceLinearCombination) ? "(":"",
+            _str(x, latex=true),
+            isa(x, SpaceLinearCombination) ? ")":"")
+    elseif n2>0
+        s = string(s, "(", 
+        join([
+            flat?_str_flat_arg_name(x):_str(x, latex=latex)
+            for x in ex.d_args],","), 
+        ")")
+    end
+    s
+end
+
+string(ex::NonAutonomousFunctionExpression) = _str(ex)
+show(io::IO, ex::NonAutonomousFunctionExpression) = print(io, _str(ex))
+
 immutable FlowExpression <: FunctionExpression
     fun::AutonomousFunction
     t::TimeExpression 
     x::SpaceExpression
-    dt_order::Int 
+    dt_order::Integer 
     d_args::Array{SpaceExpression,1}
     function FlowExpression(fun::AutonomousFunction, 
                             t::TimeExpression, 
                             x::SpaceExpression, 
-                            dt_order::Int,
+                            dt_order::Integer,
                             d_args...)
         for d_arg in d_args            
             if d_arg==x_zero
@@ -233,7 +319,6 @@ writemime(io::IO, ::MIME"text/latex",  ex::SpaceExpression) = write(io, "\$", _s
 
 
 
-
 global _space_expression_index = Dict{SpaceExpression,Int}()
 global _space_expression_register = Dict{ASCIIString,Tuple{SpaceExpression,Int}}()
 
@@ -245,6 +330,13 @@ end
 
 function _get_register_key(ex::AutonomousFunctionExpression)
     string('A', _str_from_objref(ex.fun), ":", _str_from_objref(ex.x), "|",
+        join([_str_from_objref(x)
+            for x in sort(ex.d_args, 
+            lt = (a,b) -> pointer_from_objref(a)<pointer_from_objref(b)) ],':'))
+end    
+
+function _get_register_key(ex::NonAutonomousFunctionExpression)
+    string('N', _str_from_objref(ex.fun), ":", _str_from_objref(ex.t), ":", _str_from_objref(ex.x), ":", ex.dt_order, "|",
         join([_str_from_objref(x)
             for x in sort(ex.d_args, 
             lt = (a,b) -> pointer_from_objref(a)<pointer_from_objref(b)) ],':'))

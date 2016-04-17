@@ -7,7 +7,7 @@ import
 
 export TimeExpression, TimeVariable, TimeLinearCombination
 export SpaceExpression, SpaceVariable, SpaceLinearCombination
-export AutonomousFunction
+export FunctionObject, AutonomousFunction, NonAutonomousFunction
 export FunctionExpression, AutonomousFunctionExpression, FlowExpression
 export E, coefficient, substitute, commutator
 export print_time_expression_register, print_space_expression_register
@@ -15,7 +15,7 @@ export t_zero, x_zero
 export differential, t_derivative, expand, reduce_order
 export FE2DEF, DEF2FE
 
-export @t_vars, @x_vars, @funs
+export @t_vars, @x_vars, @funs, @nonautonomous_funs
 
 #export _str, _expand, _collect
 #export _register, _str_flat_arg_name, _get_register_key
