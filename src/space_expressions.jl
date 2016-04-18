@@ -12,6 +12,9 @@ _str(f::FunctionObject; flat::Bool=false, latex::Bool=false) = f.name
 string(f::FunctionObject) = f.name
 show(io::IO, f::FunctionObject) = print(io, string(f))
 
+writemime(io::IO, ::MIME"application/x-latex", ex::FunctionObject) = write(io, "\$", _str(ex, latex=true), "\$")
+writemime(io::IO, ::MIME"text/latex",  ex::FunctionObject) = write(io, "\$", _str(ex, latex=true), "\$")
+
 ###################################################################################################
 # Essentially the same stuff as in time_expressions.jl with Time substituted by Space...
 

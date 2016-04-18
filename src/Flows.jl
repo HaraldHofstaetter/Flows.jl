@@ -3,7 +3,7 @@ VERSION >= v"0.4.5" && __precompile__()
 module Flows
 
 import 
-    Base: (*), +, -, string, show, write, writemime, expand
+    Base: (*), +, -, string, show, write, writemime, expand, exp
 
 export TimeExpression, TimeVariable, TimeLinearCombination
 export SpaceExpression, SpaceVariable, SpaceLinearCombination
@@ -17,10 +17,8 @@ export FE2DEF, DEF2FE
 
 export @t_vars, @x_vars, @funs, @nonautonomous_funs
 
-#export _str, _expand, _collect
-#export _register, _str_flat_arg_name, _get_register_key
-#export _time_expression_index, _time_expression_register
-#export _space_expression_index, _space_expression_register
+export LieOperatorExpression, LieOperatorLinearCombination
+export D, LieExpression, LieDerivative, LieExponential, LieMonomial
 
 _str_from_objref(x) = hex(Int(pointer_from_objref(x)))
 
@@ -28,6 +26,7 @@ include("time_expressions.jl")
 include("space_expressions.jl")
 include("constructors.jl")
 include("library.jl")
+include("lie_derivatives.jl")
 
 function __init__()
     global t_zero = _register(TimeLinearCombination(Tuple{TimeExpression, Real}[],0)) 
