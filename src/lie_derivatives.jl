@@ -128,19 +128,17 @@ immutable LieMonomial <: LieExpression
 end
 
 *(a::Union{LieDerivative,LieExponential}, b::Union{LieDerivative,LieExponential}) = 
-    LieMonomial(Union{LieDerivative,LieExponential}[b, a])
-*(a::LieMonomial, b::LieMonomial) = LieMonomial(vcat(b.factors, a.factors))
+    LieMonomial(Union{LieDerivative,LieExponential}[a, b])
+*(a::LieMonomial, b::LieMonomial) = LieMonomial(vcat(a.factors, b.factors))
 *(a::Union{LieDerivative,LieExponential}, b::LieMonomial) =
-    LieMonomial(vcat(b.factors, a))
+    LieMonomial(vcat(a, b.factors))
 *(a::LieMonomial, b::Union{LieDerivative,LieExponential}) = 
-    LieMonomial(vcat(b, a.factors))
+    LieMonomial(vcat(a.factors, b))
 
 function _str(M::LieMonomial; flat::Bool=false, latex::Bool=false) 
-    join([_str(x, flat=flat, latex=latex) for x in reverse(M.factors)], latex?"":"*")
+    join([_str(x, flat=flat, latex=latex) for x in M.factors], latex?"":"*")
 end    
 
-
-##############################
 
 immutable LieLinearCombination <: LieExpression 
     terms :: Array{Tuple{LieExpression, Real},1}
@@ -206,7 +204,9 @@ end
 function *(a::Union{LieDerivative,LieExponential,LieMonomial}, b::LieLinearCombination)
     LieLinearCombination( Tuple{LieExpression, Real}[ (a*x, c)  for (x,c) in b.terms] ) 
 end   
-*(a::LieLinearCombination, b::Union{LieDerivative,LieExponential,LieMonomial}) = b*a
+function *(a::LieLinearCombination, b::Union{LieDerivative,LieExponential,LieMonomial})
+    LieLinearCombination( Tuple{LieExpression, Real}[ (x*b, c)  for (x,c) in a.terms] ) 
+end   
 
 
 function _str(ex::LieLinearCombination; flat::Bool=false, latex::Bool=false) 
@@ -222,9 +222,6 @@ function _str(ex::LieLinearCombination; flat::Bool=false, latex::Bool=false)
     end    
 end   
 
-
-
-##############################
 
 
 string(ex::LieExpression) = _str(ex)
