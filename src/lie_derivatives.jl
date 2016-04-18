@@ -1,26 +1,28 @@
-immutable LieOperatorLinearCombination 
-    terms :: Array{Tuple{Union{AutonomousFunction,LieOperatorLinearCombination}, Real},1}
-    function LieOperatorLinearCombination(terms
-        :: Array{Tuple{Union{AutonomousFunction,LieOperatorLinearCombination}, Real},1}, dummy::Int)
+Operator = AutonomousFunction
+
+immutable OperatorLinearCombination 
+    terms :: Array{Tuple{Union{Operator,OperatorLinearCombination}, Real},1}
+    function OperatorLinearCombination(terms
+        :: Array{Tuple{Union{Operator,OperatorLinearCombination}, Real},1}, dummy::Int)
        # dummy only to make it distinguishable from the constructor below
        new(terms)
    end    
 end
 
-LieOperatorExpression = Union{AutonomousFunction,LieOperatorLinearCombination}
+OperatorExpression = Union{Operator,OperatorLinearCombination}
 
-function LieOperatorLinearCombination(terms :: Array{Tuple{LieOperatorExpression, Real},1})
-    d = Dict{LieOperatorExpression,Real}()
+function OperatorLinearCombination(terms :: Array{Tuple{OperatorExpression, Real},1})
+    d = Dict{OperatorExpression,Real}()
     for (x,c) in terms
         #@assert isa(c, Real) "Real expected"
-        if isa(x, LieOperatorLinearCombination)
-            # Nested LieOperatorLinearCombination are expanded into parent LieOperatorLinearCombination
+        if isa(x, OperatorLinearCombination)
+            # Nested OperatorLinearCombination are expanded into parent OperatorLinearCombination
             for (x1, c1) in x.terms
                 get!(d, x1, 0) 
                 d[x1] += c*c1
             end
         else
-            #@assert isa(x, LieOperatorExpression) "LieOperatorExpression expected"
+            #@assert isa(x, OperatorExpression) "OperatorExpression expected"
             get!(d, x, 0) 
             d[x] += c
         end
@@ -41,43 +43,43 @@ function LieOperatorLinearCombination(terms :: Array{Tuple{LieOperatorExpression
             end    
         end
     end    
-    return LieOperatorLinearCombination(Tuple{LieOperatorExpression, Real}[(key,val) for (key, val) in d], 0)
+    return OperatorLinearCombination(Tuple{OperatorExpression, Real}[(key,val) for (key, val) in d], 0)
 end
 
-LieOperatorLinearCombination(x...) = LieOperatorLinearCombination(Tuple{LieOperatorExpression, Real}[ (x[i],x[i+1]) for i=1:2:length(x) ])
+OperatorLinearCombination(x...) = OperatorLinearCombination(Tuple{OperatorExpression, Real}[ (x[i],x[i+1]) for i=1:2:length(x) ])
 
-+(a::LieOperatorExpression, b::LieOperatorExpression) = LieOperatorLinearCombination(a,1, b, 1)
--(a::LieOperatorExpression, b::LieOperatorExpression) = LieOperatorLinearCombination(a,1, b,-1)
--(a::LieOperatorExpression) = (-1)*a
-+(a::LieOperatorExpression) = a
-*(f::Real, ex::LieOperatorExpression) = LieOperatorLinearCombination(ex,f)
-*(f::Real, ex::LieOperatorLinearCombination) = LieOperatorLinearCombination( Tuple{LieOperatorExpression, Real}[ (x, f*c) for (x, c) in ex.terms ] )
-*(ex::LieOperatorExpression, f::Real) = f*ex
++(a::OperatorExpression, b::OperatorExpression) = OperatorLinearCombination(a,1, b, 1)
+-(a::OperatorExpression, b::OperatorExpression) = OperatorLinearCombination(a,1, b,-1)
+-(a::OperatorExpression) = (-1)*a
++(a::OperatorExpression) = a
+*(f::Real, ex::OperatorExpression) = OperatorLinearCombination(ex,f)
+*(f::Real, ex::OperatorLinearCombination) = OperatorLinearCombination( Tuple{OperatorExpression, Real}[ (x, f*c) for (x, c) in ex.terms ] )
+*(ex::OperatorExpression, f::Real) = f*ex
 
 
-function _str(ex::LieOperatorLinearCombination; flat::Bool=false, latex::Bool=false) 
+function _str(ex::OperatorLinearCombination; flat::Bool=false, latex::Bool=false) 
     if length(ex.terms) == 0 
         return latex?"0":"t_zero"  #empty linear combination
     else    
         s = join([join([c>=0?"+":"-", abs(c)==1?"":abs(c),
-            typeof(x)==LieOperatorLinearCombination?"(":"", 
+            typeof(x)==OperatorLinearCombination?"(":"", 
             flat?_str_flat_arg_name(x):_str(x, latex=latex), 
-            typeof(x)==LieOperatorLinearCombination?")":"", 
+            typeof(x)==OperatorLinearCombination?")":"", 
         ]) for (x, c) in ex.terms])
         return s[1]=='+' ? s[2:end] : s
     end    
 end   
 
-string(ex::LieOperatorLinearCombination) = _str(ex)
-show(io::IO, ex::LieOperatorLinearCombination) = print(io, _str(ex))
+string(ex::OperatorLinearCombination) = _str(ex)
+show(io::IO, ex::OperatorLinearCombination) = print(io, _str(ex))
 
-writemime(io::IO, ::MIME"application/x-latex", ex::LieOperatorLinearCombination) = write(io, "\$", _str(ex, latex=true), "\$")
-writemime(io::IO, ::MIME"text/latex",  ex::LieOperatorLinearCombination) = write(io, "\$", _str(ex, latex=true), "\$")
+writemime(io::IO, ::MIME"application/x-latex", ex::OperatorLinearCombination) = write(io, "\$", _str(ex, latex=true), "\$")
+writemime(io::IO, ::MIME"text/latex",  ex::OperatorLinearCombination) = write(io, "\$", _str(ex, latex=true), "\$")
 
 
-coefficient(ex::AutonomousFunction, v::AutonomousFunction) = (ex==v ? 1 : 0)
+coefficient(ex::Operator, v::Operator) = (ex==v ? 1 : 0)
 
-function coefficient(ex::LieOperatorLinearCombination, v::AutonomousFunction)
+function coefficient(ex::OperatorLinearCombination, v::Operator)
     c = 0
     for (ex1, c1) in ex.terms
        c += c1*coefficient(ex1, v)
@@ -88,10 +90,10 @@ end
 abstract LieExpression
 
 immutable LieDerivative <: LieExpression
-    F::LieOperatorExpression
+    F::OperatorExpression
 end
 
-D(F::LieOperatorExpression) = LieDerivative(F)
+D(F::OperatorExpression) = LieDerivative(F)
 
 function _str(DF::LieDerivative; flat::Bool=false, latex::Bool=false) 
     if latex
