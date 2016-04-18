@@ -64,7 +64,7 @@ TimeLinearCombination(x...) = TimeLinearCombination(Tuple{TimeExpression, Real}[
 
 function _str(ex::TimeLinearCombination; flat::Bool=false, latex::Bool=false) 
     if length(ex.terms) == 0 
-        return "0"  #empty linear combination
+        return latex?"0":"t_zero"  #empty linear combination
     else    
         s = join([join([c>=0?"+":"-", abs(c)==1?"":abs(c),
             typeof(x)!=TimeVariable?"(":"", 

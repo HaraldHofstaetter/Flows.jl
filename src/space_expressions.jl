@@ -81,7 +81,7 @@ SpaceLinearCombination(x...) = SpaceLinearCombination(Tuple{SpaceExpression, Rea
 
 function _str(ex::SpaceLinearCombination; flat::Bool=false, latex::Bool=false) 
     if length(ex.terms) == 0 
-        return "0"  #empty linear combination
+        return latex?"0":"x_zero"  #empty linear combination
     else    
         s = join([join([c>=0?"+":"-", abs(c)==1?"":abs(c),
             isa(x,SpaceLinearCombination)?"(":"", #TODO: which other types don't need parantheses?
@@ -135,12 +135,10 @@ function _str(ex::AutonomousFunctionExpression; flat::Bool=false, latex::Bool=fa
        elseif n2>=4
           s = string(s, "^{(", n2, ")}")
        end
-    elseif n2>0 
-        s = string(s, "{", n2, "}")
     end
-    s = string(s, latex?"(":"[",
+    s = string(s, "(",
         flat?_str_flat_arg_name(ex.x):_str(ex.x, latex=latex),
-        latex?")":"]")
+        (latex||n2==0)?")":"")
     if latex && n2==1
         x = ex.d_args[1]
         s = string(s, "\\cdot ", 
@@ -148,7 +146,7 @@ function _str(ex::AutonomousFunctionExpression; flat::Bool=false, latex::Bool=fa
             _str(x, latex=true),
             isa(x, SpaceLinearCombination) ? ")":"")
     elseif n2>0
-        s = string(s, "(", 
+        s = string(s, latex?"(":",", 
         join([
             flat?_str_flat_arg_name(x):_str(x, latex=latex)
             for x in ex.d_args],","), 
@@ -212,15 +210,13 @@ function _str(ex::NonAutonomousFunctionExpression; flat::Bool=false, latex::Bool
         s =  string(s, _str(ex.fun, latex=true))
     else
         s =  _str(ex.fun)
-        if n1>0 || n2>0 
-            s = string(s, "{", n1, ",", n2, "}")
-        end
     end
-    s = string(s, latex?"(":"[",
+    s = string(s, "(",
+        (!latex&&n1>0)? string(n1,",") : "",
         flat?_str_flat_arg_name(ex.t):_str(ex.t, latex=latex),
         ",",
         flat?_str_flat_arg_name(ex.x):_str(ex.x, latex=latex),
-        latex?")":"]")
+        (latex||n2==0)?")":"")
     if latex && n2==1
         x = ex.d_args[1]
         s = string(s, "\\cdot ", 
@@ -228,7 +224,7 @@ function _str(ex::NonAutonomousFunctionExpression; flat::Bool=false, latex::Bool
             _str(x, latex=true),
             isa(x, SpaceLinearCombination) ? ")":"")
     elseif n2>0
-        s = string(s, "(", 
+        s = string(s, latex?"(":",", 
         join([
             flat?_str_flat_arg_name(x):_str(x, latex=latex)
             for x in ex.d_args],","), 
@@ -285,16 +281,15 @@ function _str(ex::FlowExpression; flat::Bool=false, latex::Bool=false)
         end    
         s = string(s, "\\mathcal{E}_{", _str(ex.fun, latex=true), "}")
     else
-        s = string("E_", _str(ex.fun))
-        if n1>0 || n2>0 
-            s = string(s, "{", n1, ",", n2, "}")
-        end
+        s = string("E(", _str(ex.fun),
+            n1>0?string(",",n1):"",
+            ",")
     end
-    s = string(s, latex?"(":"[",
+    s = string(s, latex?"(":"",
         flat?_str_flat_arg_name(ex.t):_str(ex.t, latex=latex),
         ",",
         flat?_str_flat_arg_name(ex.x):_str(ex.x, latex=latex),
-        latex?")":"]")
+        (latex||n2==0)?")":"")
     if latex && n2==1
         x = ex.d_args[1]
         s = string(s, "\\cdot ", 
@@ -302,7 +297,7 @@ function _str(ex::FlowExpression; flat::Bool=false, latex::Bool=false)
             _str(x, latex=true),
             isa(x, SpaceLinearCombination) ? ")":"")
     elseif n2>0
-        s = string(s, "(", 
+        s = string(s, latex?"(":",", 
         join([
             flat?_str_flat_arg_name(x):_str(x, latex=latex)
             for x in ex.d_args],","), 
