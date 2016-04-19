@@ -137,6 +137,8 @@ end
 *(a::LieMonomial, b::Union{LieDerivative,LieExponential}) = 
     LieMonomial(vcat(a.factors, b))
 
+^(a::LieDerivative, p::Integer)= LieMonomial([a for i=1:p])    
+
 function _str(M::LieMonomial; flat::Bool=false, latex::Bool=false) 
     join([_str(x, flat=flat, latex=latex) for x in M.factors], latex?"":"*")
 end    
