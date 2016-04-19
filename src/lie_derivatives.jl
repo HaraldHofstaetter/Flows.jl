@@ -233,3 +233,54 @@ writemime(io::IO, ::MIME"application/x-latex", ex::LieExpression) = write(io, "\
 writemime(io::IO, ::MIME"text/latex",  ex::LieExpression) = write(io, "\$", _str(ex, latex=true), "\$")
 
 
+
+
+immutable LieExSpaceExVarCombination <: SpaceExpression
+    lie_ex::LieExpression
+    ex::SpaceExpression
+    u::SpaceVariable
+end
+ 
+combine(lie_ex::LieExpression, ex::SpaceExpression, u::SpaceVariable) =
+   LieExSpaceExVarCombination(lie_ex::LieExpression, ex::SpaceExpression, u::SpaceVariable)
+
+combine(lie_ex::LieExpression, u::SpaceVariable) = combine(lie_ex, u, u)
+
+function  combine(lie_ex::LieExpression, Fu::AutonomousFunctionExpression)
+   @assert isa(Fu.x, SpaceVariable) string(Fu.fun, "(SpaceVariable) expected")
+   combine(lie_ex, Fu, Fu.x)
+end
+
+*(lie_ex::LieExpression, u::SpaceVariable) = combine(lie_ex, u)
+*(lie_ex::LieExpression, Fu::AutonomousFunctionExpression) = combine(lie_ex, Fu)
+
+
+function _str(comb; flat::Bool=false, latex::Bool=false, arg::SpaceVariable=_no_x_var) 
+    if latex
+        s = string(
+            isa(comb.lie_ex, LieLinearCombination)?"(":"",
+                _str(comb.lie_ex, flat=flat, latex=true),
+            isa(comb.lie_ex, LieLinearCombination)?")":"",
+            )
+            if comb.ex==comb.u
+                s = string(s,"\\mathrm{Id}(",_str(comb.u, flat=flat, latex=true), ")")
+            elseif isa(comb.ex, AutonomousFunctionExpression) && comb.ex.x==comb.u
+                s = string(s, _str(comb.ex, flat=flat, latex=true))
+            else
+                s = string(s,"[", _str(comb.ex, flat=flat, latex=true, arg=comb.u), 
+                           "](", _str(comb.u, flat=flat, latex=true) , ")")
+            end
+    else
+        s = string("combine(",
+            _str(comb.lie_ex, flat=flat, latex=false),
+            ",",
+            _str(comb.ex, flat=flat, latex=false),
+            ",",
+            _str(comb.u, flat=flat, latex=false),
+            ")")
+    end
+end
+
+writemime(io::IO, ::MIME"application/x-latex", comb::SpaceExpression) = write(io, "\$", _str(comb, latex=true), "\$")
+writemime(io::IO, ::MIME"text/latex",  comb::SpaceExpression) = write(io, "\$", _str(comb, latex=true), "\$")
+

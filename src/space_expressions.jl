@@ -24,7 +24,15 @@ immutable SpaceVariable <: SpaceExpression
    name::AbstractString
 end 
 
-_str(x::SpaceVariable; flat::Bool=false, latex::Bool=false) = x.name
+global _no_x_var = SpaceVariable("_none_")
+
+function _str(x::SpaceVariable; flat::Bool=false, latex::Bool=false, arg::SpaceVariable=_no_x_var) 
+    if latex&&arg==x
+       "\\cdot"
+    else
+       x.name
+    end
+end
 string(x::SpaceVariable) = _str(x)
 show(io::IO, x::SpaceVariable) = print(io, _str(x))
 
@@ -82,14 +90,14 @@ SpaceLinearCombination(x...) = SpaceLinearCombination(Tuple{SpaceExpression, Rea
 *(f::Real, ex::SpaceLinearCombination) = SpaceLinearCombination( Tuple{SpaceExpression, Real}[ (x, f*c) for (x, c) in ex.terms ])
 *(ex::SpaceExpression, f::Real) = f*ex
 
-function _str(ex::SpaceLinearCombination; flat::Bool=false, latex::Bool=false) 
+function _str(ex::SpaceLinearCombination; flat::Bool=false, latex::Bool=false, arg::SpaceVariable=_no_x_var) 
     if length(ex.terms) == 0 
         return latex?"0":"x_zero"  #empty linear combination
     else    
         s = join([join([c>=0?"+":"-", abs(c)==1?"":abs(c),
-            isa(x,SpaceLinearCombination)?"(":"", #TODO: which other types don't need parantheses?
-            flat?_str_flat_arg_name(x):_str(x, latex=latex), 
-            isa(x,SpaceLinearCombination)?")":"", 
+            isa(x,SpaceLinearCombination)||arg==x?"(":"", #TODO: which other types don't need parantheses?
+            flat?_str_flat_arg_name(x):_str(x, latex=latex, arg=arg), 
+            isa(x,SpaceLinearCombination)||arg==x?")":"", 
         ]) for (x, c) in ex.terms])
         return s[1]=='+' ? s[2:end] : s
     end    
@@ -125,7 +133,7 @@ function call(F::AutonomousFunction, x::SpaceExpression, d_args...)
     AutonomousFunctionExpression(F, x, d_args...) 
 end
 
-function _str(ex::AutonomousFunctionExpression; flat::Bool=false, latex::Bool=false)
+function _str(ex::AutonomousFunctionExpression; flat::Bool=false, latex::Bool=false, arg::SpaceVariable=_no_x_var)
     s = _str(ex.fun, latex=latex)
     n2 = length(ex.d_args)
     if latex
@@ -140,18 +148,18 @@ function _str(ex::AutonomousFunctionExpression; flat::Bool=false, latex::Bool=fa
        end
     end
     s = string(s, "(",
-        flat?_str_flat_arg_name(ex.x):_str(ex.x, latex=latex),
+        flat?_str_flat_arg_name(ex.x):_str(ex.x, latex=latex, arg=arg),
         (latex||n2==0)?")":"")
     if latex && n2==1
         x = ex.d_args[1]
         s = string(s, "\\cdot ", 
             isa(x, SpaceLinearCombination) ? "(":"",
-            _str(x, latex=true),
+            _str(x, latex=true, arg=arg),
             isa(x, SpaceLinearCombination) ? ")":"")
     elseif n2>0
         s = string(s, latex?"(":",", 
         join([
-            flat?_str_flat_arg_name(x):_str(x, latex=latex)
+            flat?_str_flat_arg_name(x):_str(x, latex=latex, arg=arg)
             for x in ex.d_args],","), 
         ")")
     end
@@ -193,7 +201,7 @@ function call(F::NonAutonomousFunction, dt_order::Integer, t::TimeExpression, x:
     NonAutonomousFunctionExpression(F, t, x, dt_order, d_args...) 
 end
 
-function _str(ex::NonAutonomousFunctionExpression; flat::Bool=false, latex::Bool=false)
+function _str(ex::NonAutonomousFunctionExpression; flat::Bool=false, latex::Bool=false, arg::SpaceVariable=_no_x_var)
     n1 = ex.dt_order
     n2 = length(ex.d_args)
     if latex
@@ -218,18 +226,18 @@ function _str(ex::NonAutonomousFunctionExpression; flat::Bool=false, latex::Bool
         (!latex&&n1>0)? string(n1,",") : "",
         flat?_str_flat_arg_name(ex.t):_str(ex.t, latex=latex),
         ",",
-        flat?_str_flat_arg_name(ex.x):_str(ex.x, latex=latex),
+        flat?_str_flat_arg_name(ex.x):_str(ex.x, latex=latex, arg=arg),
         (latex||n2==0)?")":"")
     if latex && n2==1
         x = ex.d_args[1]
         s = string(s, "\\cdot ", 
             isa(x, SpaceLinearCombination) ? "(":"",
-            _str(x, latex=true),
+            _str(x, latex=true, arg=arg),
             isa(x, SpaceLinearCombination) ? ")":"")
     elseif n2>0
         s = string(s, latex?"(":",", 
         join([
-            flat?_str_flat_arg_name(x):_str(x, latex=latex)
+            flat?_str_flat_arg_name(x):_str(x, latex=latex, arg=arg)
             for x in ex.d_args],","), 
         ")")
     end
@@ -265,7 +273,7 @@ function E(fun::AutonomousFunction, t::TimeExpression, x::SpaceExpression, d_arg
     FlowExpression(fun, t, x, 0, d_args...) 
 end
 
-function _str(ex::FlowExpression; flat::Bool=false, latex::Bool=false)
+function _str(ex::FlowExpression; flat::Bool=false, latex::Bool=false, arg::SpaceVariable=_no_x_var)
     n1 = ex.dt_order
     n2 = length(ex.d_args)
     if latex
@@ -291,18 +299,18 @@ function _str(ex::FlowExpression; flat::Bool=false, latex::Bool=false)
     s = string(s, latex?"(":"",
         flat?_str_flat_arg_name(ex.t):_str(ex.t, latex=latex),
         ",",
-        flat?_str_flat_arg_name(ex.x):_str(ex.x, latex=latex),
+        flat?_str_flat_arg_name(ex.x):_str(ex.x, latex=latex, arg=arg),
         (latex||n2==0)?")":"")
     if latex && n2==1
         x = ex.d_args[1]
         s = string(s, "\\cdot ", 
             isa(x, SpaceLinearCombination) ? "(":"",
-            _str(x, latex=true),
+            _str(x, latex=true, arg=arg),
             isa(x, SpaceLinearCombination) ? ")":"")
     elseif n2>0
         s = string(s, latex?"(":",", 
         join([
-            flat?_str_flat_arg_name(x):_str(x, latex=latex)
+            flat?_str_flat_arg_name(x):_str(x, latex=latex, arg=arg)
             for x in ex.d_args],","), 
         ")")
     end

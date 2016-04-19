@@ -19,6 +19,7 @@ export @t_vars, @x_vars, @funs, @nonautonomous_funs
 
 export LieOperatorExpression, LieOperatorLinearCombination
 export D, LieExpression, LieDerivative, LieExponential, LieMonomial
+export LieExSpaceExVarCombination, combine
 
 _str_from_objref(x) = hex(Int(pointer_from_objref(x)))
 
