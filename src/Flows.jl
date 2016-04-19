@@ -17,9 +17,9 @@ export FE2DEF, DEF2FE
 
 export @t_vars, @x_vars, @funs, @nonautonomous_funs
 
-export LieOperatorExpression, LieOperatorLinearCombination
+export Operator, OperatorExpression, OperatorLinearCombination
 export D, LieExpression, LieDerivative, LieExponential, LieMonomial
-export LieExSpaceExVarCombination, combine
+export LieExSpaceExVarCombination, combine, transform
 
 _str_from_objref(x) = hex(Int(pointer_from_objref(x)))
 

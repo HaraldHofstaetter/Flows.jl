@@ -59,7 +59,7 @@ OperatorLinearCombination(x...) = OperatorLinearCombination(Tuple{OperatorExpres
 
 function _str(ex::OperatorLinearCombination; flat::Bool=false, latex::Bool=false) 
     if length(ex.terms) == 0 
-        return latex?"0":"t_zero"  #empty linear combination
+        return latex?"0":"op_zero"  #empty linear combination
     else    
         s = join([join([c>=0?"+":"-", abs(c)==1?"":abs(c),
             typeof(x)==OperatorLinearCombination?"(":"", 
@@ -213,7 +213,7 @@ end
 
 function _str(ex::LieLinearCombination; flat::Bool=false, latex::Bool=false) 
     if length(ex.terms) == 0 
-        return latex?"0":"t_zero"  #empty linear combination
+        return latex?"0":"lie_zero"  #empty linear combination
     else    
         s = join([join([c>=0?"+":"-", abs(c)==1?"":abs(c),
             typeof(x)==LieLinearCombination?"(":"", 
@@ -255,7 +255,7 @@ end
 *(lie_ex::LieExpression, Fu::AutonomousFunctionExpression) = combine(lie_ex, Fu)
 
 
-function _str(comb; flat::Bool=false, latex::Bool=false, arg::SpaceVariable=_no_x_var) 
+function _str(comb::LieExSpaceExVarCombination; flat::Bool=false, latex::Bool=false, arg::SpaceVariable=_no_x_var) 
     if latex
         s = string(
             isa(comb.lie_ex, LieLinearCombination)?"(":"",
@@ -279,8 +279,82 @@ function _str(comb; flat::Bool=false, latex::Bool=false, arg::SpaceVariable=_no_
             _str(comb.u, flat=flat, latex=false),
             ")")
     end
+    s
 end
 
-writemime(io::IO, ::MIME"application/x-latex", comb::SpaceExpression) = write(io, "\$", _str(comb, latex=true), "\$")
-writemime(io::IO, ::MIME"text/latex",  comb::SpaceExpression) = write(io, "\$", _str(comb, latex=true), "\$")
+string(comb::LieExSpaceExVarCombination) = _str(comb)
+show(io::IO, comb::LieExSpaceExVarCombination) = print(io, _str(comb))
+writemime(io::IO, ::MIME"application/x-latex", comb::LieExSpaceExVarCombination) = write(io, "\$", _str(comb, latex=true), "\$")
+writemime(io::IO, ::MIME"text/latex",  comb::LieExSpaceExVarCombination) = write(io, "\$", _str(comb, latex=true), "\$")
+
+
+function transform(lie_ex::LieDerivative, ex::SpaceExpression, u::SpaceVariable)
+    G = Operator("")
+    if isa(lie_ex.F, OperatorLinearCombination)
+        ex1 = G(u, SpaceLinearCombination( Tuple{SpaceExpression, Real}[ (F(u), c) 
+                                           for (F, c) in lie_ex.F.terms ]) )
+    else
+        @assert isa(lie_ex.F, Operator) "internal error: Operator expected"
+        ex1 = G(u, lie_ex.F(u))
+    end    
+    substitute(ex1, G, ex, u)    
+end
+
+function transform(lie_ex::LieExponential, ex::SpaceExpression, u::SpaceVariable)
+    G = Operator("")
+    if isa(lie_ex.DF.F, OperatorLinearCombination)
+        if length(lie_ex.DF.F.terms)==1
+            ex1 = G(E(lie_ex.DF.F.terms[1][1], lie_ex.t * lie_ex.DF.F.terms[1][2], u))
+        else
+            @assert false "Flow of OperatorLinearCombination not implemented"
+        end
+    else
+        @assert isa(lie_ex.DF.F, Operator) "internal error: Operator expected"
+        ex1 = G(E(lie_ex.DF.F, lie_ex.t, u))
+    end    
+    substitute(ex1, G, ex, u)    
+end
+
+function transform(lie_ex::LieMonomial, ex::SpaceExpression, u::SpaceVariable)
+    ex1 = ex
+    for x in reverse(lie_ex.factors)
+        ex1 = transform(x, ex1, u)
+    end
+    ex1
+end
+
+function transform(lie_ex::LieLinearCombination, ex::SpaceExpression, u::SpaceVariable)
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(transform(x, ex, u), c) for (x, c) in lie_ex.terms])
+end
+
+transform(comb::LieExSpaceExVarCombination) = transform(comb.lie_ex, comb.ex, comb.u)
+
+transform(lie_ex::LieExpression, u::SpaceVariable) = transform(lie_ex, u, u)
+
+function  transform(lie_ex::LieExpression, Fu::AutonomousFunctionExpression)
+   @assert isa(Fu.x, SpaceVariable) string(Fu.fun, "(SpaceVariable) expected")
+   transform(lie_ex, Fu, Fu.x)
+end
+
+
+transform(ex::SpaceVariable) = ex
+
+function transform(ex::SpaceLinearCombination)
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(transform(x), c) for (x, c) in ex.terms])
+end
+
+function transform(ex::AutonomousFunctionExpression)
+    AutonomousFunctionExpression( ex.fun, 
+        transform(ex.x), [transform(x) for x in ex.d_args]...)
+end
+
+function transform(ex::FlowExpression)
+    FlowExpression(  ex.fun,
+        ex.t, transform(ex.x), ex.dt_order, [transform(x) for x in ex.d_args]...)
+end
+
+function transform(ex::NonAutonomousFunctionExpression)
+    NonAutonomousFunctionExpression(  ex.fun,
+        ex.t, transform(ex.x), ex.dt_order, [transform(x) for x in ex.d_args]...)
+end
 
