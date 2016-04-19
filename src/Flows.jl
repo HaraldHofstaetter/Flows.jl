@@ -3,7 +3,7 @@ VERSION >= v"0.4.5" && __precompile__()
 module Flows
 
 import 
-    Base: (*), +, -, string, show, write, writemime, expand, exp
+    Base: (*), +, -, ^, string, show, write, writemime, expand, exp
 
 export TimeExpression, TimeVariable, TimeLinearCombination
 export SpaceExpression, SpaceVariable, SpaceLinearCombination
