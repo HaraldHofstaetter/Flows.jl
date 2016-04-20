@@ -17,7 +17,7 @@ export FE2DEF, DEF2FE
 export @t_vars, @x_vars, @funs, @nonautonomous_funs
 
 export VectorFieldExpression, VectorFieldVariable, VectorFieldLinearCombination
-export C, VectorFieldCommutator, op_zero, normalize
+export C, VectorFieldCommutator, op_zero, normalize, expand_vector_field_expressions
 export @vector_fields
 
 
