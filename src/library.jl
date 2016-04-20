@@ -138,12 +138,15 @@ end
 
 ### commutator ########################################
 
-commutator(F::AutonomousFunction, G::AutonomousFunction, u::SpaceExpression) = F(u,G(u)) - G(u,F(u))
+#commutator(F::AutonomousFunction, G::AutonomousFunction, u::SpaceExpression) = F(u,G(u)) - G(u,F(u))
+commutator(F::VectorFieldExpression, G::VectorFieldExpression, u::SpaceExpression) = F(u,G(u)) - G(u,F(u))
 
 # double commutator [F,[G,H]] 
-function commutator(F::AutonomousFunction, G::AutonomousFunction, H::AutonomousFunction, u::SpaceExpression)
+#function commutator(F::AutonomousFunction, G::AutonomousFunction, H::AutonomousFunction, u::SpaceExpression)
+function commutator(F::VectorFieldExpression, G::VectorFieldExpression, H::VectorFieldExpression, u::SpaceExpression)
 	v = SpaceVariable("v") 
-        X = AutonomousFunction("X")
+        #X = AutonomousFunction("X")
+        X = VectorFieldVariable("X")
         substitute(substitute(commutator(F,X,v), X , commutator(G,H,v), v), v, u)
 end
 
@@ -327,7 +330,8 @@ end
 
 function _reduce_order_init(m::Integer)
     global ro_m = m 
-    global ro_F = AutonomousFunction("F")
+    #global ro_F = AutonomousFunction("F")
+    global ro_F = VectorFieldVariable("F")
     global ro_t = TimeVariable("t")
     global ro_u = SpaceVariable("u")
     global ro_vars = SpaceVariable[ SpaceVariable(string("v",k)) for k=1:m ]

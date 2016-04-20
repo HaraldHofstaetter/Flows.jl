@@ -1,8 +1,8 @@
 abstract FunctionObject
 
-immutable AutonomousFunction <: FunctionObject
-   name::AbstractString
-end
+#immutable AutonomousFunction <: FunctionObject
+#   name::AbstractString
+#end
 
 immutable NonAutonomousFunction <: FunctionObject
    name::AbstractString
@@ -14,6 +14,8 @@ show(io::IO, f::FunctionObject) = print(io, string(f))
 
 writemime(io::IO, ::MIME"application/x-latex", ex::FunctionObject) = write(io, "\$", _str(ex, latex=true), "\$")
 writemime(io::IO, ::MIME"text/latex",  ex::FunctionObject) = write(io, "\$", _str(ex, latex=true), "\$")
+
+AutonomousFunction = VectorFieldExpression
 
 ###################################################################################################
 # Essentially the same stuff as in time_expressions.jl with Time substituted by Space...
@@ -134,7 +136,9 @@ function call(F::AutonomousFunction, x::SpaceExpression, d_args...)
 end
 
 function _str(ex::AutonomousFunctionExpression; flat::Bool=false, latex::Bool=false, arg::SpaceVariable=_no_x_var)
-    s = _str(ex.fun, latex=latex)
+    s = string(isa(ex.fun, VectorFieldLinearCombination)?"(":"",
+               _str(ex.fun, latex=latex),
+               isa(ex.fun, VectorFieldLinearCombination)?")":"")
     n2 = length(ex.d_args)
     if latex
        if n2==1
