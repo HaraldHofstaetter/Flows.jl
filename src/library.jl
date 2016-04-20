@@ -348,17 +348,6 @@ function expand_vector_field_expressions(ex::NonAutonomousFunctionExpression)
 end
 
 
-
-###  expand_vector_field_exprssions ###################
-
-expand_vector_field_expressions(x::SpaceVariable) = x
-
-function expand_vector_field_expressions(ex::SpaceLinearCombination)   
-    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(expand(x), c) for (x, c) in ex.terms])
-end
-
-
-
 ### reduce_order########################################
 
 reduce_order(x::SpaceVariable) = x
