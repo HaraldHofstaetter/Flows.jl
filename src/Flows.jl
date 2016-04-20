@@ -32,7 +32,7 @@ include("vector_field_expressions.jl")
 include("space_expressions.jl")
 include("constructors.jl")
 include("library.jl")
-include("lie_derivatives.jl")
+include("lie_expressions.jl")
 
 function __init__()
     global t_zero = _register(TimeLinearCombination(Tuple{TimeExpression, Real}[],0)) 
