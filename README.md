@@ -2,7 +2,7 @@
 A Julia package for the symbolic manipulation of flows of nonlinear evolution equations.
 
 
-Flows.jl (or its Perl predecessor) was used to carry out and verify the symbolic manipulations 
+Flows.jl (or a Perl predecessor) was used to carry out and verify the symbolic manipulations 
 needed for the analysis of error estimators for splitting methods, which is described in the paper
 
 > [W. Auzinger](http://www.asc.tuwien.ac.at/~winfried),
