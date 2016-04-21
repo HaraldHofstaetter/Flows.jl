@@ -35,6 +35,27 @@ function _str(E::LieExponential; flat::Bool=false, latex::Bool=false)
     end
 end    
 
+immutable LieCommutator <: LieExpression
+    A::LieExpression
+    B::LieExpression
+#    TODO: reactivate constructor once _register is implemented
+#    function LieCommutator (A::LieExpression, B::LieExpression)
+#        if A==B || A==lie_zero || B==lie_zero
+#            lie_zero
+#        else
+#            _register(new(A,B))
+#        end    
+#    end        
+end
+
+commutator(A::LieExpression, B::LieExpression) = LieCommutator(A, B)
+
+_str(ex::LieCommutator; flat::Bool=false, latex::Bool=false) = 
+   string(latex?"[":"commutator(", 
+          flat?_str_flat_arg_name(ex.A):_str(ex.A, latex=latex), ",", 
+          flat?_str_flat_arg_name(ex.B):_str(ex.B, latex=latex), 
+          latex?"]":")")
+
 
 immutable LieLinearCombination <: LieExpression 
     terms :: Array{Tuple{LieExpression, Real},1}
@@ -135,7 +156,7 @@ function _str(M::LieProduct; flat::Bool=false, latex::Bool=false)
     for x in M.factors], latex?"":"*")
 end   
 
-LieExprButNotProduct = Union{LieDerivative,LieExponential,LieLinearCombination}
+LieExprButNotProduct = Union{LieDerivative,LieExponential,LieLinearCombination, LieCommutator}
 #With this trick the construction of Products of Products using only the operator * 
 #(not the default constructor) is not possible (i.e. products are flattened).
 

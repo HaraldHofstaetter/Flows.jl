@@ -309,29 +309,29 @@ end
 
 
 
-###  expand_vector_field_expressions ##################
+###  evaluate_vector_field_expressions ##################
 
-expand_vector_field_expressions(x::SpaceVariable) = x
+evaluate_vector_field_expressions(x::SpaceVariable) = x
 
-function expand_vector_field_expressions(ex::SpaceLinearCombination)   
-    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(expand_vector_field_expressions(x), c) for (x, c) in ex.terms])
+function evaluate_vector_field_expressions(ex::SpaceLinearCombination)   
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(evaluate_vector_field_expressions(x), c) for (x, c) in ex.terms])
 end
 
-function expand_vector_field_expressions(ex::AutonomousFunctionExpression)   
+function evaluate_vector_field_expressions(ex::AutonomousFunctionExpression)   
     if ex.fun==op_zero
         return x_zero
     elseif isa(ex.fun, VectorFieldVariable)
-        return   ex.fun(expand_vector_field_expressions(ex.x), [expand_vector_field_expressions(x) for x in ex.d_args]...)
+        return   ex.fun(evaluate_vector_field_expressions(ex.x), [evaluate_vector_field_expressions(x) for x in ex.d_args]...)
     elseif isa(ex.fun, VectorFieldLinearCombination)
-        return SpaceLinearCombination(Tuple{SpaceExpression, Real}[(expand_vector_field_expressions(t(ex.x, ex.d_args...)), c) 
+        return SpaceLinearCombination(Tuple{SpaceExpression, Real}[(evaluate_vector_field_expressions(t(ex.x, ex.d_args...)), c) 
                                       for (t, c) in ex.fun.terms])
     elseif isa(ex.fun, VectorFieldCommutator)
         A = ex.fun.A
         B = ex.fun.B
         u = ex.x 
-        ex1 = expand_vector_field_expressions(A(u,B(u)) - B(u,A(u)))
+        ex1 = evaluate_vector_field_expressions(A(u,B(u)) - B(u,A(u)))
         for arg in ex.d_args
-            ex1 = differential(ex1, u, expand_vector_field_expressions(arg))
+            ex1 = differential(ex1, u, evaluate_vector_field_expressions(arg))
         end
         return ex1
     else
@@ -339,12 +339,12 @@ function expand_vector_field_expressions(ex::AutonomousFunctionExpression)
     end
 end
 
-function expand_vector_field_expressions(ex::FlowExpression)   
-    FlowExpression(ex.fun, ex.t, expand_vector_field_expressions(ex.x), ex.dt_order, [expand_vector_field_expressions(x) for x in ex.d_args]...)
+function evaluate_vector_field_expressions(ex::FlowExpression)   
+    FlowExpression(ex.fun, ex.t, evaluate_vector_field_expressions(ex.x), ex.dt_order, [evaluate_vector_field_expressions(x) for x in ex.d_args]...)
 end
 
-function expand_vector_field_expressions(ex::NonAutonomousFunctionExpression)   
-    NonAutonomousFunctionExpression(ex.fun, ex.t, expand_vector_field_expressions(ex.x), ex.dt_order, [expand_vector_field_expressions(x) for x in ex.d_args]...)
+function evaluate_vector_field_expressions(ex::NonAutonomousFunctionExpression)   
+    NonAutonomousFunctionExpression(ex.fun, ex.t, evaluate_vector_field_expressions(ex.x), ex.dt_order, [evaluate_vector_field_expressions(x) for x in ex.d_args]...)
 end
 
 
