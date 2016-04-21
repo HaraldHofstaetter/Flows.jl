@@ -113,11 +113,13 @@ immutable VectorFieldCommutator <: VectorFieldExpression
     end        
 end
 
-C(A::VectorFieldExpression, B::VectorFieldExpression) = VectorFieldCommutator(A, B)
+commutator(A::VectorFieldExpression, B::VectorFieldExpression) = VectorFieldCommutator(A, B)
 
 _str(ex::VectorFieldCommutator; flat::Bool=false, latex::Bool=false) = 
-   string("[", flat?_str_flat_arg_name(ex.A):_str(ex.A, latex=latex), ",", 
-               flat?_str_flat_arg_name(ex.B):_str(ex.B, latex=latex), "]")
+   string(latex?"[":"commutator(", 
+          flat?_str_flat_arg_name(ex.A):_str(ex.A, latex=latex), ",", 
+          flat?_str_flat_arg_name(ex.B):_str(ex.B, latex=latex), 
+          latex?"]":")")
 
 expand(x::VectorFieldVariable) = x
 

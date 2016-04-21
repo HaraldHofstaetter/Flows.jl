@@ -36,25 +36,6 @@ function _str(E::LieExponential; flat::Bool=false, latex::Bool=false)
 end    
 
 
-immutable LieMonomial <: LieExpression
-    factors::Array{Union{LieDerivative,LieExponential},1}
-end
-
-*(a::Union{LieDerivative,LieExponential}, b::Union{LieDerivative,LieExponential}) = 
-    LieMonomial(Union{LieDerivative,LieExponential}[a, b])
-*(a::LieMonomial, b::LieMonomial) = LieMonomial(vcat(a.factors, b.factors))
-*(a::Union{LieDerivative,LieExponential}, b::LieMonomial) =
-    LieMonomial(vcat(a, b.factors))
-*(a::LieMonomial, b::Union{LieDerivative,LieExponential}) = 
-    LieMonomial(vcat(a.factors, b))
-
-^(a::LieDerivative, p::Integer)= LieMonomial([a for i=1:p])    
-
-function _str(M::LieMonomial; flat::Bool=false, latex::Bool=false) 
-    join([_str(x, flat=flat, latex=latex) for x in M.factors], latex?"":"*")
-end    
-
-
 immutable LieLinearCombination <: LieExpression 
     terms :: Array{Tuple{LieExpression, Real},1}
     function LieLinearCombination(terms
@@ -109,19 +90,22 @@ LieLinearCombination(x...) = LieLinearCombination(Tuple{LieExpression, Real}[ (x
 *(f::Real, ex::LieLinearCombination) = LieLinearCombination( Tuple{LieExpression, Real}[ (x, f*c) for (x, c) in ex.terms ] )
 *(ex::LieExpression, f::Real) = f*ex
 
-function *(a::LieLinearCombination, b::LieLinearCombination)
-    LieLinearCombination( 
-        reshape(Tuple{LieExpression, Real}[ (x*y, c*d)   
-                for (x,c) in a.terms, (y,d) in b.terms], 
-                length(a.terms)*length(b.terms)) )
-end   
-
-function *(a::Union{LieDerivative,LieExponential,LieMonomial}, b::LieLinearCombination)
-    LieLinearCombination( Tuple{LieExpression, Real}[ (a*x, c)  for (x,c) in b.terms] ) 
-end   
-function *(a::LieLinearCombination, b::Union{LieDerivative,LieExponential,LieMonomial})
-    LieLinearCombination( Tuple{LieExpression, Real}[ (x*b, c)  for (x,c) in a.terms] ) 
-end   
+##The following code would expand Products of LinearCombinations
+##immedeately, which is not intended and thus commented out.
+#function *(a::LieLinearCombination, b::LieLinearCombination)
+#    LieLinearCombination( 
+#        reshape(Tuple{LieExpression, Real}[ (x*y, c*d)   
+#                for (x,c) in a.terms, (y,d) in b.terms], 
+#                length(a.terms)*length(b.terms)) )
+#end   
+#
+#function *(a::Union{LieDerivative,LieExponential,LieProduct}, b::LieLinearCombination)
+#    LieLinearCombination( Tuple{LieExpression, Real}[ (a*x, c)  for (x,c) in b.terms] ) 
+#end   
+#
+#function *(a::LieLinearCombination, b::Union{LieDerivative,LieExponential,LieProduct})
+#    LieLinearCombination( Tuple{LieExpression, Real}[ (x*b, c)  for (x,c) in a.terms] ) 
+#end   
 
 
 function _str(ex::LieLinearCombination; flat::Bool=false, latex::Bool=false) 
@@ -137,6 +121,33 @@ function _str(ex::LieLinearCombination; flat::Bool=false, latex::Bool=false)
     end    
 end   
 
+
+
+immutable LieProduct <: LieExpression
+    factors::Array{LieExpression,1}
+end
+
+function _str(M::LieProduct; flat::Bool=false, latex::Bool=false) 
+    join([string(
+        typeof(x)==LieLinearCombination?"(":"", 
+        flat?_str_flat_arg_name(x):_str(x, latex=latex), 
+        typeof(x)==LieLinearCombination?")":"")
+    for x in M.factors], latex?"":"*")
+end   
+
+LieExprButNotProduct = Union{LieDerivative,LieExponential,LieLinearCombination}
+#With this trick the construction of Products of Products using only the operator * 
+#(not the default constructor) is not possible (i.e. products are flattened).
+
+*(a::LieExprButNotProduct, b::LieExprButNotProduct) = 
+    LieProduct(LieExprButNotProduct[a, b])
+*(a::LieProduct, b::LieProduct) = LieProduct(vcat(a.factors, b.factors))
+*(a::LieExprButNotProduct, b::LieProduct) =
+    LieProduct(vcat(a, b.factors))
+*(a::LieProduct, b::LieExprButNotProduct) = 
+    LieProduct(vcat(a.factors, b))
+
+^(a::LieDerivative, p::Integer)= LieProduct([a for i=1:p])    
 
 
 string(ex::LieExpression) = _str(ex)
@@ -200,74 +211,4 @@ show(io::IO, comb::LieExSpaceExVarCombination) = print(io, _str(comb))
 writemime(io::IO, ::MIME"application/x-latex", comb::LieExSpaceExVarCombination) = write(io, "\$", _str(comb, latex=true), "\$")
 writemime(io::IO, ::MIME"text/latex",  comb::LieExSpaceExVarCombination) = write(io, "\$", _str(comb, latex=true), "\$")
 
-
-function transform(lie_ex::LieDerivative, ex::SpaceExpression, u::SpaceVariable)
-    G = VectorFieldVariable("")
-    if isa(lie_ex.F, VectorFieldLinearCombination)
-        ex1 = G(u, SpaceLinearCombination( Tuple{SpaceExpression, Real}[ (F(u), c) 
-                                           for (F, c) in lie_ex.F.terms ]) )
-    else
-        @assert isa(lie_ex.F, VectorFieldVariable) "internal error: VectorFieldVariable expected"
-        ex1 = G(u, lie_ex.F(u))
-    end    
-    substitute(ex1, G, ex, u)    
-end
-
-function transform(lie_ex::LieExponential, ex::SpaceExpression, u::SpaceVariable)
-    G = VectorFieldVariable("")
-    if isa(lie_ex.DF.F, VectorFieldLinearCombination)
-        if length(lie_ex.DF.F.terms)==1
-            ex1 = G(E(lie_ex.DF.F.terms[1][1], lie_ex.t * lie_ex.DF.F.terms[1][2], u))
-        else
-            @assert false "Flow of VectorFieldLinearCombination not implemented"
-        end
-    else
-        @assert isa(lie_ex.DF.F, VectorFieldVariable) "internal error: VectorFieldVariable expected"
-        ex1 = G(E(lie_ex.DF.F, lie_ex.t, u))
-    end    
-    substitute(ex1, G, ex, u)    
-end
-
-function transform(lie_ex::LieMonomial, ex::SpaceExpression, u::SpaceVariable)
-    ex1 = ex
-    for x in reverse(lie_ex.factors)
-        ex1 = transform(x, ex1, u)
-    end
-    ex1
-end
-
-function transform(lie_ex::LieLinearCombination, ex::SpaceExpression, u::SpaceVariable)
-    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(transform(x, ex, u), c) for (x, c) in lie_ex.terms])
-end
-
-transform(comb::LieExSpaceExVarCombination) = transform(comb.lie_ex, comb.ex, comb.u)
-
-transform(lie_ex::LieExpression, u::SpaceVariable) = transform(lie_ex, u, u)
-
-function  transform(lie_ex::LieExpression, Fu::AutonomousFunctionExpression)
-   @assert isa(Fu.x, SpaceVariable) string(Fu.fun, "(SpaceVariable) expected")
-   transform(lie_ex, Fu, Fu.x)
-end
-
-
-transform(ex::SpaceVariable) = ex
-
-function transform(ex::SpaceLinearCombination)
-    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(transform(x), c) for (x, c) in ex.terms])
-end
-
-function transform(ex::AutonomousFunctionExpression)
-    AutonomousFunctionExpression( ex.fun, 
-        transform(ex.x), [transform(x) for x in ex.d_args]...)
-end
-
-function transform(ex::FlowExpression)
-    FlowExpression(  ex.fun,
-        ex.t, transform(ex.x), ex.dt_order, [transform(x) for x in ex.d_args]...)
-end
-
-function transform(ex::NonAutonomousFunctionExpression)
-    NonAutonomousFunctionExpression(  ex.fun,
-        ex.t, transform(ex.x), ex.dt_order, [transform(x) for x in ex.d_args]...)
-end
 

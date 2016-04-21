@@ -17,13 +17,14 @@ export FE2DEF, DEF2FE
 export @t_vars, @x_vars, @funs, @nonautonomous_funs
 
 export VectorFieldExpression, VectorFieldVariable, VectorFieldLinearCombination
-export C, VectorFieldCommutator, op_zero, normalize, expand_vector_field_expressions
+export VectorFieldCommutator, op_zero, normalize, expand_vector_field_expressions
 export @vector_fields
 
 
 export Operator, OperatorExpression, OperatorLinearCombination
-export D, LieExpression, LieDerivative, LieExponential, LieMonomial
-export LieExSpaceExVarCombination, combine, transform
+export D, LieExpression, LieDerivative, LieExponential, LieProduct
+export LieExSpaceExVarCombination, combine
+export evaluate, evaluate_lie_expressions
 
 _str_from_objref(x) = hex(Int(pointer_from_objref(x)))
 
@@ -33,6 +34,7 @@ include("space_expressions.jl")
 include("constructors.jl")
 include("library.jl")
 include("lie_expressions.jl")
+include("lie_library.jl")
 
 function __init__()
     global t_zero = _register(TimeLinearCombination(Tuple{TimeExpression, Real}[],0)) 
