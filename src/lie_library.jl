@@ -2,28 +2,13 @@
 
 function evaluate(lie_ex::LieDerivative, ex::SpaceExpression, u::SpaceVariable)
     G = VectorFieldVariable("")
-    if isa(lie_ex.F, VectorFieldLinearCombination)
-        ex1 = G(u, SpaceLinearCombination( Tuple{SpaceExpression, Real}[ (F(u), c) 
-                                           for (F, c) in lie_ex.F.terms ]) )
-    else
-        @assert isa(lie_ex.F, VectorFieldVariable) "internal error: VectorFieldVariable expected"
-        ex1 = G(u, lie_ex.F(u))
-    end    
+    ex1 = G(u, lie_ex.F(u))
     substitute(ex1, G, ex, u)    
 end
 
 function evaluate(lie_ex::LieExponential, ex::SpaceExpression, u::SpaceVariable)
     G = VectorFieldVariable("")
-    if isa(lie_ex.DF.F, VectorFieldLinearCombination)
-        if length(lie_ex.DF.F.terms)==1
-            ex1 = G(E(lie_ex.DF.F.terms[1][1], lie_ex.t * lie_ex.DF.F.terms[1][2], u))
-        else
-            @assert false "Flow of VectorFieldLinearCombination not implemented"
-        end
-    else
-        @assert isa(lie_ex.DF.F, VectorFieldVariable) "internal error: VectorFieldVariable expected"
-        ex1 = G(E(lie_ex.DF.F, lie_ex.t, u))
-    end    
+    ex1 = G(E(lie_ex.DF.F, lie_ex.t, u))
     substitute(ex1, G, ex, u)    
 end
 
