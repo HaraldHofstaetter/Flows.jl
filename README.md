@@ -28,5 +28,6 @@ cp(joinpath(homedir(), ".julia/v0.4/Flows/examples/"), joinpath(homedir(), "Flow
 ```
 Then 'Flows_examples' will be listed in the JuliaBox home screen. The examples contain among others
 + [Flows.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/master/examples/Flows.ipynb)
++ [DefectLieTrotter.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/master/examples/DefectLieTrotter.ipynb)
 + [ElementaryDifferentials.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/master/examples/ElementaryDifferentials.ipynb)
   
