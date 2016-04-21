@@ -3,7 +3,7 @@ VERSION >= v"0.4.5" && __precompile__()
 module Flows
 
 import 
-    Base: (*), +, -, ^, string, show, write, writemime, expand, exp
+    Base: (*), +, -, ^, string, show, write, writemime, expand, apply, exp
 
 export TimeExpression, TimeVariable, TimeLinearCombination
 export SpaceExpression, SpaceVariable, SpaceLinearCombination
@@ -21,7 +21,7 @@ export VectorFieldCommutator, op_zero, normalize, resolve_vector_field_expressio
 
 export Operator, OperatorExpression, OperatorLinearCombination
 export D, LieExpression, LieDerivative, LieExponential, LieProduct
-export LieCommutator, LieExSpaceExVarCombination, combine
+export LieCommutator, LieExpressionToSpaceExpressionApplication, apply
 export evaluate, evaluate_lie_expressions, expand_lie_expressions
 export expand_commutators, expand_lie_commutators
 export lie_zero, lie_id

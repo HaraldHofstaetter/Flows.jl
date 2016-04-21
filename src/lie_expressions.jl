@@ -192,27 +192,27 @@ writemime(io::IO, ::MIME"text/latex",  ex::LieExpression) = write(io, "\$", _str
 
 
 
-immutable LieExSpaceExVarCombination <: SpaceExpression
+immutable LieExpressionToSpaceExpressionApplication <: SpaceExpression
     lie_ex::LieExpression
     ex::SpaceExpression
     u::SpaceVariable
 end
  
-combine(lie_ex::LieExpression, ex::SpaceExpression, u::SpaceVariable) =
-   LieExSpaceExVarCombination(lie_ex::LieExpression, ex::SpaceExpression, u::SpaceVariable)
+apply(lie_ex::LieExpression, ex::SpaceExpression, u::SpaceVariable) =
+   LieExpressionToSpaceExpressionApplication(lie_ex::LieExpression, ex::SpaceExpression, u::SpaceVariable)
 
-combine(lie_ex::LieExpression, u::SpaceVariable) = combine(lie_ex, u, u)
+apply(lie_ex::LieExpression, u::SpaceVariable) = apply(lie_ex, u, u)
 
-function  combine(lie_ex::LieExpression, Fu::AutonomousFunctionExpression)
+function  apply(lie_ex::LieExpression, Fu::AutonomousFunctionExpression)
    @assert isa(Fu.x, SpaceVariable) string(Fu.fun, "(SpaceVariable) expected")
-   combine(lie_ex, Fu, Fu.x)
+   apply(lie_ex, Fu, Fu.x)
 end
 
-*(lie_ex::LieExpression, u::SpaceVariable) = combine(lie_ex, u)
-*(lie_ex::LieExpression, Fu::AutonomousFunctionExpression) = combine(lie_ex, Fu)
+*(lie_ex::LieExpression, u::SpaceVariable) = apply(lie_ex, u)
+*(lie_ex::LieExpression, Fu::AutonomousFunctionExpression) = apply(lie_ex, Fu)
 
 
-function _str(comb::LieExSpaceExVarCombination; flat::Bool=false, latex::Bool=false, arg::SpaceVariable=_no_x_var) 
+function _str(comb::LieExpressionToSpaceExpressionApplication; flat::Bool=false, latex::Bool=false, arg::SpaceVariable=_no_x_var) 
     if latex
         s = string(
             isa(comb.lie_ex, LieLinearCombination)?"(":"",
@@ -228,7 +228,7 @@ function _str(comb::LieExSpaceExVarCombination; flat::Bool=false, latex::Bool=fa
                            "](", _str(comb.u, flat=flat, latex=true) , ")")
             end
     else
-        s = string("combine(",
+        s = string("apply(",
             _str(comb.lie_ex, flat=flat, latex=false),
             ",",
             _str(comb.ex, flat=flat, latex=false),
@@ -239,10 +239,10 @@ function _str(comb::LieExSpaceExVarCombination; flat::Bool=false, latex::Bool=fa
     s
 end
 
-string(comb::LieExSpaceExVarCombination) = _str(comb)
-show(io::IO, comb::LieExSpaceExVarCombination) = print(io, _str(comb))
-writemime(io::IO, ::MIME"application/x-latex", comb::LieExSpaceExVarCombination) = write(io, "\$", _str(comb, latex=true), "\$")
-writemime(io::IO, ::MIME"text/latex",  comb::LieExSpaceExVarCombination) = write(io, "\$", _str(comb, latex=true), "\$")
+string(comb::LieExpressionToSpaceExpressionApplication) = _str(comb)
+show(io::IO, comb::LieExpressionToSpaceExpressionApplication) = print(io, _str(comb))
+writemime(io::IO, ::MIME"application/x-latex", comb::LieExpressionToSpaceExpressionApplication) = write(io, "\$", _str(comb, latex=true), "\$")
+writemime(io::IO, ::MIME"text/latex",  comb::LieExpressionToSpaceExpressionApplication) = write(io, "\$", _str(comb, latex=true), "\$")
 
 
 global _lie_expression_index = Dict{LieExpression,Int}()

@@ -28,7 +28,7 @@ function evaluate(lie_ex::LieLinearCombination, ex::SpaceExpression, u::SpaceVar
     SpaceLinearCombination(Tuple{SpaceExpression, Real}[(evaluate(x, ex, u), c) for (x, c) in lie_ex.terms])
 end
 
-evaluate(comb::LieExSpaceExVarCombination) = evaluate(comb.lie_ex, comb.ex, comb.u)
+evaluate(comb::LieExpressionToSpaceExpressionApplication) = evaluate(comb.lie_ex, comb.ex, comb.u)
 
 evaluate(lie_ex::LieExpression, u::SpaceVariable) = evaluate(lie_ex, u, u)
 
@@ -39,7 +39,7 @@ end
 
 ## evaluate_lie_expressions for SpaceExpressions
 
-evaluate_lie_expressions(comb::LieExSpaceExVarCombination) = evaluate(comb)
+evaluate_lie_expressions(comb::LieExpressionToSpaceExpressionApplication) = evaluate(comb)
 
 evaluate_lie_expressions(ex::SpaceVariable) = ex
 
@@ -82,12 +82,12 @@ function expand_commutators(ex::LieProduct)
     LieProduct(LieExpression[expand_commutators(x) for x in ex.factors])
 end
 
-expand_commutators(comb::LieExSpaceExVarCombination) = combine(expand_commutators(comb.lie_ex), comb.ex, comb.u)
+expand_commutators(comb::LieExpressionToSpaceExpressionApplication) = apply(expand_commutators(comb.lie_ex), comb.ex, comb.u)
 expand_lie_commutators(ex::LieExpression) = expand_commutators(ex)
 
 ## expand_lie_commutators for SpaceExpressions
 
-expand_lie_commutators(comb::LieExSpaceExVarCombination) = expand_commutators(comb)
+expand_lie_commutators(comb::LieExpressionToSpaceExpressionApplication) = expand_commutators(comb)
 expand_lie_commutators(ex::SpaceVariable) = ex
 
 function expand_lie_commutators(ex::SpaceLinearCombination)
@@ -148,12 +148,12 @@ function expand(ex::LieProduct)
     return ex1 
 end
 
-expand(comb::LieExSpaceExVarCombination) = combine(expand(comb.lie_ex), comb.ex, comb.u)
+expand(comb::LieExpressionToSpaceExpressionApplication) = apply(expand(comb.lie_ex), comb.ex, comb.u)
 expand_lie_expressions(ex::LieExpression) = expand(ex)
 
 ## expand_lie_expressions for SpaceExpressions
 
-expand_lie_expressions(comb::LieExSpaceExVarCombination) = expand(comb)
+expand_lie_expressions(comb::LieExpressionToSpaceExpressionApplication) = expand(comb)
 expand_lie_expressions(ex::SpaceVariable) = ex
 
 function expand_lie_expressions(ex::SpaceLinearCombination)
