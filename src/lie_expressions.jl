@@ -2,6 +2,9 @@ abstract LieExpression
 
 immutable LieDerivative <: LieExpression
     F::VectorFieldExpression
+    function LieDerivative(F::VectorFieldExpression)
+        _register(new(F))
+    end
 end
 
 D(F::VectorFieldExpression) = LieDerivative(F)
@@ -18,6 +21,9 @@ end
 immutable LieExponential <: LieExpression
     t ::TimeExpression
     DF::LieDerivative
+    function LieExponential(t::TimeExpression, DF::LieDerivative)
+        _register(new(t, DF))
+    end
 end
 
 exp(t::TimeExpression, DF::LieDerivative) = LieExponential(t, DF)
@@ -38,14 +44,13 @@ end
 immutable LieCommutator <: LieExpression
     A::LieExpression
     B::LieExpression
-#    TODO: reactivate constructor once _register is implemented
-#    function LieCommutator (A::LieExpression, B::LieExpression)
-#        if A==B || A==lie_zero || B==lie_zero
-#            lie_zero
-#        else
-#            _register(new(A,B))
-#        end    
-#    end        
+    function LieCommutator(A::LieExpression, B::LieExpression)
+        if A==B || A==lie_zero || B==lie_zero
+            lie_zero
+        else
+            _register(new(A,B))
+        end    
+    end        
 end
 
 commutator(A::LieExpression, B::LieExpression) = LieCommutator(A, B)
@@ -98,7 +103,7 @@ function LieLinearCombination(terms :: Array{Tuple{LieExpression, Real},1})
             end    
         end
     end    
-    return LieLinearCombination(Tuple{LieExpression, Real}[(key,val) for (key, val) in d], 0)
+    return _register(LieLinearCombination(Tuple{LieExpression, Real}[(key,val) for (key, val) in d], 0))
 end
 
 LieLinearCombination(x...) = LieLinearCombination(Tuple{LieExpression, Real}[ (x[i],x[i+1]) for i=1:2:length(x) ])
@@ -112,7 +117,7 @@ LieLinearCombination(x...) = LieLinearCombination(Tuple{LieExpression, Real}[ (x
 *(ex::LieExpression, f::Real) = f*ex
 
 ##The following code would expand Products of LinearCombinations
-##immedeately, which is not intended and thus commented out.
+##immedeitely, which is not intended and thus commented out.
 #function *(a::LieLinearCombination, b::LieLinearCombination)
 #    LieLinearCombination( 
 #        reshape(Tuple{LieExpression, Real}[ (x*y, c*d)   
@@ -146,14 +151,21 @@ end
 
 immutable LieProduct <: LieExpression
     factors::Array{LieExpression,1}
+    function LieProduct(factors::Array{LieExpression,1})
+        _register(new(factors))
+    end    
 end
 
-function _str(M::LieProduct; flat::Bool=false, latex::Bool=false) 
+
+function _str(p; flat::Bool=false, latex::Bool=false) 
+    if length(p.factors)==0
+        return latex?"\\mathrm{Id}":"lie_id"
+    end
     join([string(
         typeof(x)==LieLinearCombination?"(":"", 
         flat?_str_flat_arg_name(x):_str(x, latex=latex), 
         typeof(x)==LieLinearCombination?")":"")
-    for x in M.factors], latex?"":"*")
+    for x in p.factors], latex?"":"*")
 end   
 
 LieExprButNotProduct = Union{LieDerivative,LieExponential,LieLinearCombination, LieCommutator}
@@ -161,14 +173,14 @@ LieExprButNotProduct = Union{LieDerivative,LieExponential,LieLinearCombination, 
 #(not the default constructor) is not possible (i.e. products are flattened).
 
 *(a::LieExprButNotProduct, b::LieExprButNotProduct) = 
-    LieProduct(LieExprButNotProduct[a, b])
+    LieProduct(LieExpression[a, b])
 *(a::LieProduct, b::LieProduct) = LieProduct(vcat(a.factors, b.factors))
 *(a::LieExprButNotProduct, b::LieProduct) =
     LieProduct(vcat(a, b.factors))
 *(a::LieProduct, b::LieExprButNotProduct) = 
     LieProduct(vcat(a.factors, b))
 
-^(a::LieDerivative, p::Integer)= LieProduct([a for i=1:p])    
+^(a::LieDerivative, p::Integer)= LieProduct(LieExpression[a for i=1:p])    
 
 
 string(ex::LieExpression) = _str(ex)
@@ -232,4 +244,47 @@ show(io::IO, comb::LieExSpaceExVarCombination) = print(io, _str(comb))
 writemime(io::IO, ::MIME"application/x-latex", comb::LieExSpaceExVarCombination) = write(io, "\$", _str(comb, latex=true), "\$")
 writemime(io::IO, ::MIME"text/latex",  comb::LieExSpaceExVarCombination) = write(io, "\$", _str(comb, latex=true), "\$")
 
+
+global _lie_expression_index = Dict{LieExpression,Int}()
+global _lie_expression_register = Dict{ASCIIString,Tuple{LieExpression,Int}}()
+
+function _get_register_key(ex::LieLinearCombination)
+    string('L', join([join([_str_from_objref(x), ':', c]) 
+        for (x,c) in sort(ex.terms, 
+            lt = (a,b) -> pointer_from_objref(a[1])<pointer_from_objref(b[1])) ],'|'))
+end    
+
+function _get_register_key(ex::LieProduct)
+    string('P', join([ _str_from_objref(x) for x in ex.factors], ':'))
+end
+
+function _get_register_key(ex::LieCommutator)
+    string('C', _str_from_objref(ex.A), ':', _str_from_objref(ex.B)) 
+end    
+
+function _get_register_key(ex::LieDerivative)
+    string('D', _str_from_objref(ex.F)) 
+end    
+
+function _get_register_key(ex::LieExponential)
+    string('E', _str_from_objref(ex.t),':',_str_from_objref(ex.DF))
+end    
+
+function _register(ex::LieExpression)
+    key = _get_register_key(ex)
+    (ex,i) = get!(_lie_expression_register, key) do
+        i = length(_lie_expression_index)
+        _lie_expression_index[ex] = i 
+        (ex, i)
+    end
+    ex
+end
+
+_str_flat_arg_name(ex::LieExpression) = string("#", _lie_expression_index[ex])
+
+function print_lie_expression_register()
+    for (ex, i) in sort(collect(values(_lie_expression_register)), lt = (a,b)-> a[2]<b[2])
+        println("#", i, "\t" , _str(ex, flat=true))
+     end
+end
 

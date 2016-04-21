@@ -135,8 +135,33 @@ function expand(ex::LieLinearCombination)
    LieLinearCombination(Tuple{LieExpression, Real}[(expand(x), c) for (x, c) in ex.terms])
 end
 
+_expander_mul(a::LieExpression, b::LieExpression) = a*b
 
+function _expander_mul(a::LieLinearCombination, b::LieLinearCombination)
+    LieLinearCombination( 
+        reshape(Tuple{LieExpression, Real}[ (x*y, c*d)   
+                for (x,c) in a.terms, (y,d) in b.terms], 
+                length(a.terms)*length(b.terms)) )
+end   
 
+function _expander_mul(a::LieExpression, b::LieLinearCombination)
+    LieLinearCombination( Tuple{LieExpression, Real}[ (_expander_mul(a,x), c)  for (x,c) in b.terms] ) 
+end   
+
+function _expander_mul(a::LieLinearCombination, b::LieExpression)
+    LieLinearCombination( Tuple{LieExpression, Real}[ (_expander_mul(x,b), c)  for (x,c) in a.terms] ) 
+end   
+
+function expand(ex::LieProduct)
+    if length(ex.factors)==0
+        return ex
+    end    
+    ex1 = expand(ex.factors[1])
+    for i=2:length(ex.factors)
+        ex1 = _expander_mul(ex1, ex.factors[i])
+    end    
+    return ex1 
+end
 
 expand(comb::LieExSpaceExVarCombination) = combine(expand(comb.lie_ex), comb.ex, comb.u)
 expand_lie_expressions(ex::LieExpression) = expand(ex)
