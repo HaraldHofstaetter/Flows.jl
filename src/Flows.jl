@@ -17,7 +17,7 @@ export FE2DEF, DEF2FE
 export @t_vars, @x_vars, @funs, @nonautonomous_funs
 
 export VectorFieldExpression, VectorFieldVariable, VectorFieldLinearCombination
-export VectorFieldCommutator, op_zero, normalize, evaluate_vector_field_expressions
+export VectorFieldCommutator, op_zero, normalize, resolve_vector_field_expressions
 
 export Operator, OperatorExpression, OperatorLinearCombination
 export D, LieExpression, LieDerivative, LieExponential, LieProduct
