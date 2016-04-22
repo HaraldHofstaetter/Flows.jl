@@ -23,8 +23,8 @@ export Operator, OperatorExpression, OperatorLinearCombination
 export D, LieExpression, LieDerivative, LieExponential, LieProduct
 export LieCommutator, LieExpressionToSpaceExpressionApplication, apply
 export evaluate_lie_expressions, evaluate, expand_lie_expressions
-export expand_lie_commutators, distribute_lie_derivatives
-export lie_zero, lie_id
+export evaluate_lie_commutators, distribute_lie_derivatives
+export gather_lie_commutators, lie_zero, lie_id
 
 _str_from_objref(x) = hex(Int(pointer_from_objref(x)))
 
