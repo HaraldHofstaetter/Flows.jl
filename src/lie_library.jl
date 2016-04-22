@@ -241,3 +241,47 @@ function distribute_lie_derivatives(ex::NonAutonomousFunctionExpression)
         ex.t, distribute_lie_derivatives(ex.x), ex.dt_order, [distribute_lie_derivatives(x) for x in ex.d_args]...)
 end
 
+### t_derivative ##################
+
+t_derivative(ex::LieDerivative, t::TimeVariable; to_the_left::Bool=false) = lie_zero
+
+function t_derivative(ex::LieLinearCombination, t::TimeVariable; to_the_left::Bool=false)
+   LieLinearCombination(Tuple{LieExpression, Real}[(t_derivative(x, t, to_the_left=to_the_left), c) for (x, c) in ex.terms])
+end
+
+function t_derivative(ex::LieCommutator, t::TimeVariable; to_the_left::Bool=false)
+    dA = t_derivative(ex.A, t, to_the_left=to_the_left)
+    dB = t_derivative(ex.B, t, to_the_left=to_the_left)
+    LieCommutator(dA, ex.B) + LieCommutator(ex.A, dB)
+end
+
+function t_derivative(ex::LieExponential, t::TimeVariable; to_the_left::Bool=false)
+    c = coefficient(ex.t, t)
+    to_the_left? c*(ex.DF*ex) : c*(ex*ex.DF)
+end
+
+function t_derivative(ex::LieProduct, t::TimeVariable; to_the_left::Bool=false)
+    ex1 = lie_zero
+    for i in 1:length(ex.factors)
+        x = ex.factors[i]
+        if isa(x, LieExponential)
+            c = coefficient(x.t, t)
+            if to_the_left
+                ex1 = ex1 + c*LieProduct(vcat(ex.factors[1:i-1], x.DF ,ex.factors[i:end]))
+            else
+                ex1 = ex1 + c*LieProduct(vcat(ex.factors[1:i], x.DF, ex.factors[i+1:end]))
+            end
+        else
+            dx = t_derivative(x, t, to_the_left=to_the_left)
+            if dx != lie_zero
+                ex1 = ex1 + LieProduct(vcat(ex.factors[1:i-1], dx ,ex.factors[i+1:end]))
+            end
+        end
+    end
+    ex1
+end
+
+function t_derivative(comb::LieExpressionToSpaceExpressionApplication, t::TimeVariable) 
+   apply(t_derivative(comb.lie_ex, t), comb.ex, comb.u) + apply(comb.lie_ex, t_derivative(comb.ex, t), comb.u)
+end   
+

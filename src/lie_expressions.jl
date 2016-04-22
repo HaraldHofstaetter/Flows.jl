@@ -27,13 +27,15 @@ immutable LieExponential <: LieExpression
 end
 
 exp(t::TimeExpression, DF::LieDerivative) = LieExponential(t, DF)
+exp(t::TimeExpression, F::VectorFieldExpression) =
+    LieExponential(t, LieDerivative(F))
 
 function _str(E::LieExponential; flat::Bool=false, latex::Bool=false) 
     if latex
         string("\\mathrm{e}^{",  
-               typeof(E.t)==TimeLinearCombination?"(":"", 
+               typeof(E.t)==TimeLinearCombination&&length(E.t.terms)>1?"(":"", 
               _str(E.t, latex=true),
-               typeof(E.t)==TimeLinearCombination?")":"", 
+               typeof(E.t)==TimeLinearCombination&&length(E.t.terms)>1?")":"", 
               _str(E.DF, latex=true), "}")
     else   
         string("exp(", _str(E.t, flat=flat, latex=false), ",",
