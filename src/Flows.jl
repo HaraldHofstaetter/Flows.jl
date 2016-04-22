@@ -22,8 +22,8 @@ export VectorFieldCommutator, op_zero, normalize, resolve_vector_field_expressio
 export Operator, OperatorExpression, OperatorLinearCombination
 export D, LieExpression, LieDerivative, LieExponential, LieProduct
 export LieCommutator, LieExpressionToSpaceExpressionApplication, apply
-export evaluate, evaluate_lie_expressions, expand_lie_expressions
-export expand_commutators, expand_lie_commutators
+export evaluate_lie_expressions, evaluate, expand_lie_expressions
+export expand_lie_commutators, distribute_lie_derivatives
 export lie_zero, lie_id
 
 _str_from_objref(x) = hex(Int(pointer_from_objref(x)))
