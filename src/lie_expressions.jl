@@ -219,6 +219,10 @@ LieExprButNotProduct = Union{LieDerivative,LieExponential,LieLinearCombination, 
 function *(a::LieLinearCombination, b::LieLinearCombination)
    if length(a.terms)==1 && length(b.terms)==1
        return (a.terms[1][2]*b.terms[1][2])*(a.terms[1][1]*b.terms[1][1])
+   elseif length(a.terms)==1
+       return a.terms[1][2]*(a.terms[1][1]*b)
+   elseif length(b.terms)==1
+       return b.terms[1][2]*(a*b.terms[1][1])
    else
        return a==lie_zero||b==lie_zero ? lie_zero : LieProduct(LieExpression[a, b])
    end
@@ -257,7 +261,7 @@ function *(a::LieExprButNotProduct, b::LieLinearCombination)
 end
 
 
-^(a::LieDerivative, p::Integer)= LieProduct(LieExpression[a for i=1:p])    
+^(a::LieDerivative, p::Integer)= LieProduct(LieExpression[a for i=1:p])   
 
 
 add_factorized(a::LieExpression, b::LieExpression; ca::Real=1, cb::Real=1) = ca*a + cb*b
