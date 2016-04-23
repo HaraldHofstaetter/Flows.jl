@@ -22,7 +22,9 @@ immutable Label
     name::AbstractString
 end
 
-global _default_label = Label("")
+global default = Label("")
+global L = Label("L")
+global R = Label("R")
 global _show_exponential_labels = true
 
 function show_exponential_labels(flag::Bool)
@@ -40,25 +42,25 @@ immutable LieExponential <: LieExpression
 end
 
 exp(t::TimeExpression, DF::LieDerivative, label::Label) = LieExponential(t, DF, label)
-exp(t::TimeExpression, DF::LieDerivative) = LieExponential(t, DF, _default_label)
+exp(t::TimeExpression, DF::LieDerivative) = LieExponential(t, DF, default)
 exp(t::TimeExpression, F::VectorFieldExpression, label::Label) =
     LieExponential(t, LieDerivative(F), label)
 exp(t::TimeExpression, F::VectorFieldExpression) =
-    LieExponential(t, LieDerivative(F), _default_label)
+    LieExponential(t, LieDerivative(F), default)
 
 function _str(E::LieExponential; flat::Bool=false, latex::Bool=false) 
     if latex
-        string(_show_exponential_labels&&E.label!=_default_label?"\\underbrace{":"",
+        string(_show_exponential_labels&&E.label!=default?"\\underbrace{":"",
                "\\mathrm{e}^{",  
                typeof(E.t)==TimeLinearCombination&&length(E.t.terms)>1?"(":"", 
               _str(E.t, latex=true),
                typeof(E.t)==TimeLinearCombination&&length(E.t.terms)>1?")":"", 
               _str(E.DF, latex=true), "}",
-              _show_exponential_labels&&E.label!=_default_label?string("}_\\mathrm{",E.label.name,"}"):"")
+              _show_exponential_labels&&E.label!=default?string("}_\\mathrm{",E.label.name,"}"):"")
     else   
         string("exp(", _str(E.t, flat=flat, latex=false), ",",
                _str(E.DF, flat=flat, latex=false), 
-               E.label==_default_label?"":string(",",E.label.name),
+               E.label==default?"":string(",",E.label.name),
                ")")
     end
 end    
@@ -214,12 +216,53 @@ LieExprButNotProduct = Union{LieDerivative,LieExponential,LieLinearCombination, 
 *(a::LieProduct, b::LieExprButNotProduct) = 
     b==lie_zero ? lie_zero : ( a==lie_id ? b : LieProduct(vcat(a.factors, b)) )
 
+function *(a::LieLinearCombination, b::LieLinearCombination)
+   if length(a.terms)==1 && length(b.terms)==1
+       return (a.terms[1][2]*b.terms[1][2])*(a.terms[1][1]*b.terms[1][1])
+   else
+       return a==lie_zero||b==lie_zero ? lie_zero : LieProduct(LieExpression[a, b])
+   end
+end
+
+function *(a::LieLinearCombination, b::LieProduct)
+    if length(a.terms)==1 
+        return b==lie_id ? a : a.terms[1][2]*LieProduct(vcat(a.terms[1][1], b.factors)) 
+    else
+        return a==lie_zero ? lie_zero : LieProduct(vcat(a, b.factors)) 
+    end
+end
+
+function *(a::LieLinearCombination, b::LieExprButNotProduct)
+    if length(a.terms)==1 
+        return a.terms[1][2]*(a.terms[1][1]*b)
+    else
+        return a==lie_zero||b==lie_zero ? lie_zero : LieProduct(LieExpression[a, b])
+    end
+end
+
+function *(a::LieProduct, b::LieLinearCombination)
+    if length(b.terms)==1 
+        return a==lie_id ? b : b.terms[1][2]*LieProduct(vcat(a.factors, b.terms[1][1])) 
+    else
+        return b==lie_zero ? lie_zero : LieProduct(vcat(a.factors, b)) 
+    end
+end
+
+function *(a::LieExprButNotProduct, b::LieLinearCombination)
+    if length(b.terms)==1 
+        return b.terms[1][2]*(a*b.terms[1][1])
+    else
+        return a==lie_zero||b==lie_zero ? lie_zero : LieProduct(LieExpression[a, b])
+    end
+end
+
+
 ^(a::LieDerivative, p::Integer)= LieProduct(LieExpression[a for i=1:p])    
 
 
-add_factorized(a::LieExpression, b::LieExpression) = a + b
+add_factorized(a::LieExpression, b::LieExpression; ca::Real=1, cb::Real=1) = ca*a + cb*b
 
-function add_factorized(a::LieProduct, b::LieProduct) 
+function add_factorized(a::LieProduct, b::LieProduct; ca::Real=1, cb::Real=1) 
     if a==b
        return 2*a
     end   
@@ -233,21 +276,59 @@ function add_factorized(a::LieProduct, b::LieProduct)
         j+=1
     end    
     return LieProduct(vcat(a.factors[1:i], 
-               LieProduct(a.factors[i+1:end-j]) + LieProduct(b.factors[i+1:end-j]),
+               ca*LieProduct(a.factors[i+1:end-j]) + cb*LieProduct(b.factors[i+1:end-j]),
                a.factors[end-j+1:end]))
 end
 
-function add_factorized(a::LieExpression, b::LieProduct) 
+function add_factorized(a::LieExpression, b::LieProduct; ca::Real=1, cb::Real=1) 
    if length(b.factors)>=1 && b.factors[1]==a
-       return a*(lie_id + LieProduct(b.factors[2:end]))
+       return a*(ca*lie_id + cb*LieProduct(b.factors[2:end]))
    elseif length(b.factors)>=2 && b.factors[end]==a
-       return (lie_id+LieProduct(b.factors[1:end-1]))*a
+       return (ca*lie_id+cb*LieProduct(b.factors[1:end-1]))*a
    else
-       return a+b
+       return ca*a+cb*b
    end
 end   
 
-add_factorized(a::LieProduct, b::LieExpression) = add_factorized(b, a) 
+add_factorized(a::LieProduct, b::LieExpression; ca::Real=1, cb::Real=1) = 
+    add_factorized(b, a, ca=cb, cb=ca) 
+
+function add_factorized(a::LieLinearCombination, b::LieLinearCombination; ca::Real=1, cb::Real=1) 
+    if length(a.terms)==1 && length(b.terms)==1
+        return add_factorized(a.terms[1][1], b.terms[1][1], ca=ca*a.terms[1][2], cb=cb*b.terms[1][2])
+    else
+        return ca*a+cb*b
+    end    
+end
+
+#disambigouize 
+function add_factorized(a::LieLinearCombination, b::LieProduct; ca::Real=1, cb::Real=1) 
+    if length(a.terms)==1 
+        return add_factorized(a.terms[1][1], b, ca=ca*a.terms[1][2], cb=cb)
+    elseif length(b.factors)>=1 && b.factors[1]==a
+        return a*(ca*lie_id + cb*LieProduct(b.factors[2:end]))
+    elseif length(b.factors)>=2 && b.factors[end]==a
+        return (ca*lie_id+cb*LieProduct(b.factors[1:end-1]))*a
+    else
+        return ca*a+cb*b
+    end
+end   
+
+add_factorized(a::LieProduct, b::LieLinearCombination; ca::Real=1, cb::Real=1) =
+    add_factorized(b, a, ca=cb, cb=ca) 
+
+function add_factorized(a::LieLinearCombination, b::LieExpression; ca::Real=1, cb::Real=1) 
+    if length(a.terms)==1 
+        return add_factorized(a.terms[1][1], b, ca=ca*a.terms[1][2], cb=cb)
+    else
+        return ca*a+cb*b
+    end    
+end
+
+add_factorized(a::LieExpression, b::LieLinearCombination; ca::Real=1, cb::Real=1) =
+    add_factorized(b, a, ca=cb, cb=ca) 
+
+
 
 
 string(ex::LieExpression) = _str(ex)
@@ -335,7 +416,7 @@ end
 
 function _get_register_key(ex::LieExponential)
     string('E', _str_from_objref(ex.t),':',_str_from_objref(ex.DF),
-           ex.label!=_default_label?string(":",_str_from_objref(ex.label)):"")
+           ex.label!=default?string(":",_str_from_objref(ex.label)):"")
 end    
 
 function _register(ex::LieExpression)

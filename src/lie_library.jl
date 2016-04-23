@@ -365,49 +365,34 @@ end
 
 ### t_derivative ##################
 
-t_derivative(ex::LieDerivative, t::TimeVariable; to_the_left::Bool=false) = lie_zero
+t_derivative(ex::LieDerivative, t::TimeVariable; to_the_left::Array{Label, 1}=Label[L]) = lie_zero
 
-function t_derivative(ex::LieLinearCombination, t::TimeVariable; to_the_left::Bool=false)
+function t_derivative(ex::LieLinearCombination, t::TimeVariable; to_the_left::Array{Label, 1}=Label[L])
    LieLinearCombination(Tuple{LieExpression, Real}[(t_derivative(x, t, to_the_left=to_the_left), c) for (x, c) in ex.terms])
 end
 
-function t_derivative(ex::LieCommutator, t::TimeVariable; to_the_left::Bool=false)
+function t_derivative(ex::LieCommutator, t::TimeVariable; to_the_left::Array{Label, 1}=Label[L])
     dA = t_derivative(ex.A, t, to_the_left=to_the_left)
     dB = t_derivative(ex.B, t, to_the_left=to_the_left)
-    LieCommutator(dA, ex.B) + LieCommutator(ex.A, dB)
+    #LieCommutator(dA, ex.B) + LieCommutator(ex.A, dB)
+    add_factorized(LieCommutator(dA, ex.B), LieCommutator(ex.A, dB))
 end
 
-function t_derivative(ex::LieExponential, t::TimeVariable; to_the_left::Bool=false)
+function t_derivative(ex::LieExponential, t::TimeVariable; to_the_left::Array{Label, 1}=Label[L])
     c = coefficient(ex.t, t)
-    to_the_left? c*(ex.DF*ex) : c*(ex*ex.DF)
+    ex.label in to_the_left ? c*(ex.DF*ex) : c*(ex*ex.DF)
 end
 
-_add_factorized(a::LieExpression, b::LieExpression) = a + b
-function _add_factorized(a::LieProduct, b::LieProduct) 
-    h = min(length(a.factors), length(b.factors))
-    i = 0
-    while i<h && a.factors[i+1]==b.factors[i+1]
-        i+=1
-    end
-    j = 0
-    while j<h && a.factors[end-j]==b.factors[end-j]
-        j+=1
-    end    
-    return LieProduct(vcat(a.factors[1:i], 
-               LieProduct(a.factors[i+1:end-j]) + LieProduct(b.factors[i+1:end-j]),
-               a.factors[end-j+1:end]))
-end
-
-function t_derivative(ex::LieProduct, t::TimeVariable; to_the_left::Bool=false)
+function t_derivative(ex::LieProduct, t::TimeVariable; to_the_left::Array{Label, 1}=Label[L])
     if length(ex.factors) == 0
         return lie_zero
     elseif length(ex.factors) == 1
-        return  t_derivative(ex.factors[1], t)
+        return  t_derivative(ex.factors[1], t, to_the_left=to_the_left)
     else
         ex1 = ex.factors[1]
         ex2 = LieProduct(ex.factors[2:end])
         #return t_derivative(ex1,t)*ex2 + ex1*t_derivative(ex2,t)
-        return _add_factorized(t_derivative(ex1, t, to_the_left=to_the_left )*ex2,  
+        return add_factorized(t_derivative(ex1, t, to_the_left=to_the_left )*ex2,  
                                ex1*t_derivative(ex2, t, to_the_left=to_the_left))
     end
 #    ex1 = lie_zero
