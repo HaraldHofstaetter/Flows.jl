@@ -19,12 +19,12 @@ export @t_vars, @x_vars, @funs, @nonautonomous_funs
 export VectorFieldExpression, VectorFieldVariable, VectorFieldLinearCombination
 export VectorFieldCommutator, op_zero, normalize, resolve_vector_field_expressions
 
-export Operator, OperatorExpression, OperatorLinearCombination
 export D, LieExpression, LieDerivative, LieExponential, LieProduct
 export LieCommutator, LieExpressionToSpaceExpressionApplication, apply
 export evaluate_lie_expressions, evaluate, expand_lie_expressions
 export evaluate_lie_commutators, distribute_lie_derivatives
 export gather_lie_commutators, lie_zero, lie_id
+export add_factorized, Label, show_exponential_labels
 
 _str_from_objref(x) = hex(Int(pointer_from_objref(x)))
 
@@ -41,7 +41,7 @@ function __init__()
     global op_zero = _register(VectorFieldLinearCombination(Tuple{VectorFieldExpression, Real}[], 0)) 
     global x_zero = _register(SpaceLinearCombination(Tuple{SpaceExpression, Real}[], 0)) 
     global lie_zero = _register(LieLinearCombination(Tuple{LieExpression, Real}[], 0)) 
-    global lie_id =  LieProduct(LieExpression[])
+    global lie_id =  _register(LieProduct(LieExpression[], 0))
     _reduce_order_init(5)
 end
 

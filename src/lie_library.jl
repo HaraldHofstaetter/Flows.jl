@@ -382,25 +382,52 @@ function t_derivative(ex::LieExponential, t::TimeVariable; to_the_left::Bool=fal
     to_the_left? c*(ex.DF*ex) : c*(ex*ex.DF)
 end
 
-function t_derivative(ex::LieProduct, t::TimeVariable; to_the_left::Bool=false)
-    ex1 = lie_zero
-    for i in 1:length(ex.factors)
-        x = ex.factors[i]
-        if isa(x, LieExponential)
-            c = coefficient(x.t, t)
-            if to_the_left
-                ex1 = ex1 + c*LieProduct(vcat(ex.factors[1:i-1], x.DF ,ex.factors[i:end]))
-            else
-                ex1 = ex1 + c*LieProduct(vcat(ex.factors[1:i], x.DF, ex.factors[i+1:end]))
-            end
-        else
-            dx = t_derivative(x, t, to_the_left=to_the_left)
-            if dx != lie_zero
-                ex1 = ex1 + LieProduct(vcat(ex.factors[1:i-1], dx ,ex.factors[i+1:end]))
-            end
-        end
+_add_factorized(a::LieExpression, b::LieExpression) = a + b
+function _add_factorized(a::LieProduct, b::LieProduct) 
+    h = min(length(a.factors), length(b.factors))
+    i = 0
+    while i<h && a.factors[i+1]==b.factors[i+1]
+        i+=1
     end
-    ex1
+    j = 0
+    while j<h && a.factors[end-j]==b.factors[end-j]
+        j+=1
+    end    
+    return LieProduct(vcat(a.factors[1:i], 
+               LieProduct(a.factors[i+1:end-j]) + LieProduct(b.factors[i+1:end-j]),
+               a.factors[end-j+1:end]))
+end
+
+function t_derivative(ex::LieProduct, t::TimeVariable; to_the_left::Bool=false)
+    if length(ex.factors) == 0
+        return lie_zero
+    elseif length(ex.factors) == 1
+        return  t_derivative(ex.factors[1], t)
+    else
+        ex1 = ex.factors[1]
+        ex2 = LieProduct(ex.factors[2:end])
+        #return t_derivative(ex1,t)*ex2 + ex1*t_derivative(ex2,t)
+        return _add_factorized(t_derivative(ex1, t, to_the_left=to_the_left )*ex2,  
+                               ex1*t_derivative(ex2, t, to_the_left=to_the_left))
+    end
+#    ex1 = lie_zero
+#    for i in 1:length(ex.factors)
+#        x = ex.factors[i]
+#        if isa(x, LieExponential)
+#            c = coefficient(x.t, t)
+#            if to_the_left
+#                ex1 = ex1 + c*LieProduct(vcat(ex.factors[1:i-1], x.DF ,ex.factors[i:end]))
+#            else
+#                ex1 = ex1 + c*LieProduct(vcat(ex.factors[1:i], x.DF, ex.factors[i+1:end]))
+#            end
+#        else
+#            dx = t_derivative(x, t, to_the_left=to_the_left)
+#            if dx != lie_zero
+#                ex1 = ex1 + LieProduct(vcat(ex.factors[1:i-1], dx ,ex.factors[i+1:end]))
+#            end
+#        end
+#    end
+#    ex1
 end
 
 function t_derivative(comb::LieExpressionToSpaceExpressionApplication, t::TimeVariable) 

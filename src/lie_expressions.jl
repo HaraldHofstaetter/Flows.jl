@@ -18,28 +18,48 @@ function _str(DF::LieDerivative; flat::Bool=false, latex::Bool=false)
 end    
 
 
+immutable Label
+    name::AbstractString
+end
+
+global _default_label = Label("")
+global _show_exponential_labels = true
+
+function show_exponential_labels(flag::Bool)
+     global _show_exponential_labels = flag
+end
+show_exponential_labels()=show_exponential_labels(true)
+
 immutable LieExponential <: LieExpression
     t ::TimeExpression
     DF::LieDerivative
-    function LieExponential(t::TimeExpression, DF::LieDerivative)
-        _register(new(t, DF))
+    label::Label
+    function LieExponential(t::TimeExpression, DF::LieDerivative, label::Label)
+        _register(new(t, DF, label))
     end
 end
 
-exp(t::TimeExpression, DF::LieDerivative) = LieExponential(t, DF)
+exp(t::TimeExpression, DF::LieDerivative, label::Label) = LieExponential(t, DF, label)
+exp(t::TimeExpression, DF::LieDerivative) = LieExponential(t, DF, _default_label)
+exp(t::TimeExpression, F::VectorFieldExpression, label::Label) =
+    LieExponential(t, LieDerivative(F), label)
 exp(t::TimeExpression, F::VectorFieldExpression) =
-    LieExponential(t, LieDerivative(F))
+    LieExponential(t, LieDerivative(F), _default_label)
 
 function _str(E::LieExponential; flat::Bool=false, latex::Bool=false) 
     if latex
-        string("\\mathrm{e}^{",  
+        string(_show_exponential_labels&&E.label!=_default_label?"\\underbrace{":"",
+               "\\mathrm{e}^{",  
                typeof(E.t)==TimeLinearCombination&&length(E.t.terms)>1?"(":"", 
               _str(E.t, latex=true),
                typeof(E.t)==TimeLinearCombination&&length(E.t.terms)>1?")":"", 
-              _str(E.DF, latex=true), "}")
+              _str(E.DF, latex=true), "}",
+              _show_exponential_labels&&E.label!=_default_label?string("}_\\mathrm{",E.label.name,"}"):"")
     else   
         string("exp(", _str(E.t, flat=flat, latex=false), ",",
-               _str(E.DF, flat=flat, latex=false), ")")
+               _str(E.DF, flat=flat, latex=false), 
+               E.label==_default_label?"":string(",",E.label.name),
+               ")")
     end
 end    
 
@@ -119,7 +139,7 @@ LieLinearCombination(x...) = LieLinearCombination(Tuple{LieExpression, Real}[ (x
 *(ex::LieExpression, f::Real) = f*ex
 
 ##The following code would expand Products of LinearCombinations
-##immedeitely, which is not intended and thus commented out.
+##immediately, which is not intended and thus commented out.
 #function *(a::LieLinearCombination, b::LieLinearCombination)
 #    LieLinearCombination( 
 #        reshape(Tuple{LieExpression, Real}[ (x*y, c*d)   
@@ -153,8 +173,18 @@ end
 
 immutable LieProduct <: LieExpression
     factors::Array{LieExpression,1}
-    function LieProduct(factors::Array{LieExpression,1})
-        _register(new(factors))
+    function LieProduct(factors::Array{LieExpression,1}, dummy::Int)
+        new(factors)
+    end    
+end
+
+function LieProduct(factors::Array{LieExpression,1})
+    if length(factors)==0
+        return lie_id
+    elseif length(factors)==1
+        return factors[1]
+    else    
+        return _register(LieProduct(factors, 0))
     end    
 end
 
@@ -174,15 +204,50 @@ LieExprButNotProduct = Union{LieDerivative,LieExponential,LieLinearCombination, 
 #With this trick the construction of Products of Products using only the operator * 
 #(not the default constructor) is not possible (i.e. products are flattened).
 
+#apply simple rules 0*a = a*0 = 0, 1*a = a*1 = a
 *(a::LieExprButNotProduct, b::LieExprButNotProduct) = 
-    LieProduct(LieExpression[a, b])
-*(a::LieProduct, b::LieProduct) = LieProduct(vcat(a.factors, b.factors))
+    a==lie_zero||b==lie_zero ? lie_zero : LieProduct(LieExpression[a, b])
+*(a::LieProduct, b::LieProduct) = 
+    a==lie_id ? b : ( b==lie_id ? a :LieProduct(vcat(a.factors, b.factors)) )
 *(a::LieExprButNotProduct, b::LieProduct) =
-    LieProduct(vcat(a, b.factors))
+    a==lie_zero ? lie_zero : ( b==lie_id ? a : LieProduct(vcat(a, b.factors)) )
 *(a::LieProduct, b::LieExprButNotProduct) = 
-    LieProduct(vcat(a.factors, b))
+    b==lie_zero ? lie_zero : ( a==lie_id ? b : LieProduct(vcat(a.factors, b)) )
 
 ^(a::LieDerivative, p::Integer)= LieProduct(LieExpression[a for i=1:p])    
+
+
+add_factorized(a::LieExpression, b::LieExpression) = a + b
+
+function add_factorized(a::LieProduct, b::LieProduct) 
+    if a==b
+       return 2*a
+    end   
+    h = min(length(a.factors), length(b.factors))
+    i = 0
+    while i<h && a.factors[i+1]==b.factors[i+1]
+        i+=1
+    end
+    j = 0
+    while j<h && a.factors[end-j]==b.factors[end-j]
+        j+=1
+    end    
+    return LieProduct(vcat(a.factors[1:i], 
+               LieProduct(a.factors[i+1:end-j]) + LieProduct(b.factors[i+1:end-j]),
+               a.factors[end-j+1:end]))
+end
+
+function add_factorized(a::LieExpression, b::LieProduct) 
+   if length(b.factors)>=1 && b.factors[1]==a
+       return a*(lie_id + LieProduct(b.factors[2:end]))
+   elseif length(b.factors)>=2 && b.factors[end]==a
+       return (lie_id+LieProduct(b.factors[1:end-1]))*a
+   else
+       return a+b
+   end
+end   
+
+add_factorized(a::LieProduct, b::LieExpression) = add_factorized(b, a) 
 
 
 string(ex::LieExpression) = _str(ex)
@@ -269,7 +334,8 @@ function _get_register_key(ex::LieDerivative)
 end    
 
 function _get_register_key(ex::LieExponential)
-    string('E', _str_from_objref(ex.t),':',_str_from_objref(ex.DF))
+    string('E', _str_from_objref(ex.t),':',_str_from_objref(ex.DF),
+           ex.label!=_default_label?string(":",_str_from_objref(ex.label)):"")
 end    
 
 function _register(ex::LieExpression)
