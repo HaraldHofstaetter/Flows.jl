@@ -23,7 +23,7 @@ export D, LieExpression, LieDerivative, LieExponential, LieProduct
 export LieCommutator, LieExpressionToSpaceExpressionApplication, apply
 export evaluate_lie_expressions, evaluate, expand_lie_expressions
 export expand_lie_commutators, expand_lie_derivatives
-export gather_lie_commutators, lie_zero, lie_id
+export merge_lie_derivatives, lie_zero, lie_id
 export add_factorized, Label, default, L, R, show_exponential_labels
 
 _str_from_objref(x) = hex(Int(pointer_from_objref(x)))

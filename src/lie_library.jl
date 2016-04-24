@@ -311,54 +311,105 @@ function expand_lie_derivatives(ex::NonAutonomousFunctionExpression; expand_line
 end
 
 
-### gather_lie_commutators ##################
+### merge_lie_derivatives ##################
 
-gather_lie_commutators(ex::LieDerivative) = ex
+merge_lie_derivatives(ex::LieDerivative; merge_linear_combinations::Bool=true, merge_commutators::Bool=true) = ex
 
-gather_lie_commutators(ex::LieExponential) = ex
+merge_lie_derivatives(ex::LieExponential; merge_linear_combinations::Bool=true, merge_commutators::Bool=true) = ex
 
-function gather_lie_commutators(ex::LieCommutator) 
-    A = gather_lie_commutators(ex.A)
-    B = gather_lie_commutators(ex.B)
-    if isa(A, LieDerivative) && isa(B, LieDerivative)
+function merge_lie_derivatives(ex::LieCommutator; merge_linear_combinations::Bool=true, merge_commutators::Bool=true) 
+    A = merge_lie_derivatives(ex.A, 
+            merge_linear_combinations=merge_linear_combinations, 
+            merge_commutators=merge_commutators)
+    B = merge_lie_derivatives(ex.B, 
+            merge_linear_combinations=merge_linear_combinations, 
+            merge_commutators=merge_commutators)
+    if merge_commutators && isa(A, LieDerivative) && isa(B, LieDerivative)
         return LieDerivative(VectorFieldCommutator(B.F, A.F))  # note the reversed order
     else
         return LieCommutator(A, B)
     end
 end    
 
-function gather_lie_commutators(ex::LieLinearCombination)
-   LieLinearCombination(Tuple{LieExpression, Real}[(gather_lie_commutators(x), c) for (x, c) in ex.terms])
+function merge_lie_derivatives(ex::LieLinearCombination; 
+   merge_linear_combinations::Bool=true, merge_commutators::Bool=true)
+       ex1 = LieLinearCombination(Tuple{LieExpression, Real}[(merge_lie_derivatives(x, 
+             merge_linear_combinations=merge_linear_combinations, 
+             merge_commutators=merge_commutators), c) for (x, c) in ex.terms])
+       if merge_linear_combinations
+           v_ex = op_zero
+           r = lie_zero
+           for (x,c) in ex1.terms
+               if isa(x, LieDerivative)
+                   v_ex = v_ex + c*x.F 
+               else
+                   r = r + c*x
+               end
+           end
+           ex1 = r + D(v_ex)
+       end
+       return ex1
 end
 
-function gather_lie_commutators(ex::LieProduct)
-    LieProduct(LieExpression[gather_lie_commutators(x) for x in ex.factors])
+function merge_lie_derivatives(ex::LieProduct; 
+    merge_linear_combinations::Bool=true, merge_commutators::Bool=true)
+        LieProduct(LieExpression[merge_lie_derivatives(x, 
+            merge_linear_combinations=merge_linear_combinations, 
+            merge_commutators=merge_commutators) for x in ex.factors])
 end
 
-gather_lie_commutators(comb::LieExpressionToSpaceExpressionApplication) = apply(gather_lie_commutators(comb.lie_ex), comb.ex, comb.u)
-gather_lie_commutators(ex::LieExpression) = gather_lie_commutators(ex)
+merge_lie_derivatives(comb::LieExpressionToSpaceExpressionApplication; 
+    merge_linear_combinations::Bool=true, merge_commutators::Bool=true) = 
+        apply(merge_lie_derivatives(comb.lie_ex, 
+            merge_linear_combinations=merge_linear_combinations, 
+            merge_commutators=merge_commutators), comb.ex, comb.u)
 
-## gather_lie_commutators for SpaceExpressions
+merge_lie_derivatives(ex::LieExpression;
+    merge_linear_combinations::Bool=true, merge_commutators::Bool=true) = 
+        merge_lie_derivatives(ex, 
+            merge_linear_combinations=merge_linear_combinations, 
+            merge_commutators=merge_commutators)
 
-gather_lie_commutators(ex::SpaceVariable) = ex
+## merge_lie_derivatives for SpaceExpressions
 
-function gather_lie_commutators(ex::SpaceLinearCombination)
-    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(gather_lie_commutators(x), c) for (x, c) in ex.terms])
+merge_lie_derivatives(ex::SpaceVariable; 
+     merge_linear_combinations::Bool=true, merge_commutators::Bool=true) = ex
+
+function merge_lie_derivatives(ex::SpaceLinearCombination; 
+    merge_linear_combinations::Bool=true, merge_commutators::Bool=true)
+        SpaceLinearCombination(Tuple{SpaceExpression, Real}[(merge_lie_derivatives(x, 
+            merge_linear_combinations=merge_linear_combinations, 
+            merge_commutators=merge_commutators), c) for (x, c) in ex.terms])
 end
 
-function gather_lie_commutators(ex::AutonomousFunctionExpression)
+function merge_lie_derivatives(ex::AutonomousFunctionExpression; 
+    merge_linear_combinations::Bool=true, merge_commutators::Bool=true)
     AutonomousFunctionExpression( ex.fun, 
-        gather_lie_commutators(ex.x), [gather_lie_commutators(x) for x in ex.d_args]...)
+        merge_lie_derivatives(ex.x, 
+            merge_linear_combinations=merge_linear_combinations, 
+            merge_commutators=merge_commutators), [merge_lie_derivatives(x, 
+            merge_linear_combinations=merge_linear_combinations, 
+            merge_commutators=merge_commutators) for x in ex.d_args]...)
 end
 
-function gather_lie_commutators(ex::FlowExpression)
+function merge_lie_derivatives(ex::FlowExpression; 
+    merge_linear_combinations::Bool=true, merge_commutators::Bool=true)
     FlowExpression(  ex.fun,
-        ex.t, gather_lie_commutators(ex.x), ex.dt_order, [gather_lie_commutators(x) for x in ex.d_args]...)
+        ex.t, merge_lie_derivatives(ex.x, 
+            merge_linear_combinations=merge_linear_combinations, 
+            merge_commutators=merge_commutators), ex.dt_order, [merge_lie_derivatives(x, 
+            merge_linear_combinations=merge_linear_combinations, 
+            merge_commutators=merge_commutators) for x in ex.d_args]...)
 end
 
-function gather_lie_commutators(ex::NonAutonomousFunctionExpression)
+function merge_lie_derivatives(ex::NonAutonomousFunctionExpression; 
+    merge_linear_combinations::Bool=true, merge_commutators::Bool=true)
     NonAutonomousFunctionExpression(  ex.fun,
-        ex.t, gather_lie_commutators(ex.x), ex.dt_order, [gather_lie_commutators(x) for x in ex.d_args]...)
+        ex.t, merge_lie_derivatives(ex.x, 
+            merge_linear_combinations=merge_linear_combinations, 
+            merge_commutators=merge_commutators), ex.dt_order, [merge_lie_derivatives(x, 
+            merge_linear_combinations=merge_linear_combinations, 
+            merge_commutators=merge_commutators) for x in ex.d_args]...)
 end
 
 
