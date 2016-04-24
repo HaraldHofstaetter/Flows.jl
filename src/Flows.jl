@@ -22,7 +22,7 @@ export VectorFieldCommutator, op_zero, normalize, resolve_vector_field_expressio
 export D, LieExpression, LieDerivative, LieExponential, LieProduct
 export LieCommutator, LieExpressionToSpaceExpressionApplication, apply
 export evaluate_lie_expressions, evaluate, expand_lie_expressions
-export evaluate_lie_commutators, distribute_lie_derivatives
+export resolve_lie_commutators, distribute_lie_derivatives
 export gather_lie_commutators, lie_zero, lie_id
 export add_factorized, Label, default, L, R, show_exponential_labels
 

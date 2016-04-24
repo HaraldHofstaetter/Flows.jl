@@ -21,7 +21,7 @@ function evaluate_lie_expressions(lie_ex::LieProduct, ex::SpaceExpression, u::Sp
 end
 
 function evaluate_lie_expressions(lie_ex::LieCommutator, ex::SpaceExpression, u::SpaceVariable)
-    evaluate_lie_expressions(evaluate_lie_commutators(lie_ex), ex, u)
+    evaluate_lie_expressions(resolve_lie_commutators(lie_ex), ex, u)
 end
 
 function evaluate_lie_expressions(lie_ex::LieLinearCombination, ex::SpaceExpression, u::SpaceVariable)
@@ -66,48 +66,48 @@ function evaluate_lie_expressions(ex::NonAutonomousFunctionExpression)
 end
 
 
-### evaluate_lie_commutators ##############################
+### resolve_lie_commutators ##############################
 
-evaluate_lie_commutators(ex::LieDerivative) = ex
-evaluate_lie_commutators(ex::LieExponential) = ex
+resolve_lie_commutators(ex::LieDerivative) = ex
+resolve_lie_commutators(ex::LieExponential) = ex
 
-function evaluate_lie_commutators(ex::LieCommutator) 
-    A = evaluate_lie_commutators(ex.A)
-    B = evaluate_lie_commutators(ex.B)
+function resolve_lie_commutators(ex::LieCommutator) 
+    A = resolve_lie_commutators(ex.A)
+    B = resolve_lie_commutators(ex.B)
     A*B - B*A
 end    
 
-function evaluate_lie_commutators(ex::LieLinearCombination)
-   LieLinearCombination(Tuple{LieExpression, Real}[(evaluate_lie_commutators(x), c) for (x, c) in ex.terms])
+function resolve_lie_commutators(ex::LieLinearCombination)
+   LieLinearCombination(Tuple{LieExpression, Real}[(resolve_lie_commutators(x), c) for (x, c) in ex.terms])
 end
 
-function evaluate_lie_commutators(ex::LieProduct)
-    LieProduct(LieExpression[evaluate_lie_commutators(x) for x in ex.factors])
+function resolve_lie_commutators(ex::LieProduct)
+    LieProduct(LieExpression[resolve_lie_commutators(x) for x in ex.factors])
 end
 
-evaluate_lie_commutators(comb::LieExpressionToSpaceExpressionApplication) = apply(evaluate_lie_commutators(comb.lie_ex), comb.ex, comb.u)
+resolve_lie_commutators(comb::LieExpressionToSpaceExpressionApplication) = apply(resolve_lie_commutators(comb.lie_ex), comb.ex, comb.u)
 
-## evaluate_lie_commutators for SpaceExpressions
+## resolve_lie_commutators for SpaceExpressions
 
-evaluate_lie_commutators(ex::SpaceVariable) = ex
+resolve_lie_commutators(ex::SpaceVariable) = ex
 
-function evaluate_lie_commutators(ex::SpaceLinearCombination)
-    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(evaluate_lie_commutators(x), c) for (x, c) in ex.terms])
+function resolve_lie_commutators(ex::SpaceLinearCombination)
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(resolve_lie_commutators(x), c) for (x, c) in ex.terms])
 end
 
-function evaluate_lie_commutators(ex::AutonomousFunctionExpression)
+function resolve_lie_commutators(ex::AutonomousFunctionExpression)
     AutonomousFunctionExpression( ex.fun, 
-        evaluate_lie_commutators(ex.x), [evaluate_lie_commutators(x) for x in ex.d_args]...)
+        resolve_lie_commutators(ex.x), [resolve_lie_commutators(x) for x in ex.d_args]...)
 end
 
-function evaluate_lie_commutators(ex::FlowExpression)
+function resolve_lie_commutators(ex::FlowExpression)
     FlowExpression(  ex.fun,
-        ex.t, evaluate_lie_commutators(ex.x), ex.dt_order, [evaluate_lie_commutators(x) for x in ex.d_args]...)
+        ex.t, resolve_lie_commutators(ex.x), ex.dt_order, [resolve_lie_commutators(x) for x in ex.d_args]...)
 end
 
-function evaluate_lie_commutators(ex::NonAutonomousFunctionExpression)
+function resolve_lie_commutators(ex::NonAutonomousFunctionExpression)
     NonAutonomousFunctionExpression(  ex.fun,
-        ex.t, evaluate_lie_commutators(ex.x), ex.dt_order, [evaluate_lie_commutators(x) for x in ex.d_args]...)
+        ex.t, resolve_lie_commutators(ex.x), ex.dt_order, [resolve_lie_commutators(x) for x in ex.d_args]...)
 end
 
 
