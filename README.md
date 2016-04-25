@@ -16,13 +16,13 @@ Flows.jl consists of only ~1000 lines of Julia code and is fully self-contained,
 of course with the (very relevant!) exception that it depends on the Julia standard library
 (but not on  additional Julia packages).
 
-##New experimental version
-There is a [new experimental version](https://github.com/HaraldHofstaetter/Flows.jl/tree/lie_experimental), which implements symbolic manipulations of Lie derivatives.
 
 ##Installation
+In a Julia notebook type
 ```julia
 Pkg.clone("https://github.com/HaraldHofstaetter/Flows.jl")
 ```
+Note that there is a [new experimental version](https://github.com/HaraldHofstaetter/Flows.jl/tree/lie_experimental), which implements symbolic manipulations of Lie derivatives.
 ##Examples
 To get easy access to the examples, copy them into the home directory:
 ```julia
