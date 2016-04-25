@@ -29,7 +29,7 @@ In a Julia notebook type
 ```julia
 Pkg.clone("https://github.com/HaraldHofstaetter/Flows.jl")
 ```
-Then, to get the new experimental branch, type
+Then, to get the new experimental version, type
 ```julia
 Pkg.checkout("Flows","lie_experimental")
 ```
