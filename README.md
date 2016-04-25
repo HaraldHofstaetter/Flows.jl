@@ -19,7 +19,6 @@ of course with the (very relevant!) exception that it depends on the Julia stand
 ##Installation
 ```julia
 Pkg.clone("https://github.com/HaraldHofstaetter/Flows.jl")
-Pkg.build("Flows")
 ```
 ##Examples
 To get easy access to the examples, copy them into the home directory:
