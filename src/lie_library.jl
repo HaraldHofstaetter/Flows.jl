@@ -470,3 +470,153 @@ function t_derivative(comb::LieExpressionToSpaceExpressionApplication, t::TimeVa
    apply(t_derivative(comb.lie_ex, t), comb.ex, comb.u) + apply(comb.lie_ex, t_derivative(comb.ex, t), comb.u)
 end   
 
+
+### normalize_lie_products ##################
+
+function normalize_lie_products(ex::LieDerivative; to_the_right::Array{Label, 1}=Label[R])
+    if isa(ex.F, VectorFieldLinearCombination) && length(ex.F.terms)==1
+        c = ex.F.terms[1][2]
+        term = ex.F.terms[1][1]
+        if c==0 then
+            return lie_zero
+        else
+            return c*D(term)
+        end    
+    else
+        return ex
+    end    
+end
+
+function normalize_lie_products(ex::LieLinearCombination; to_the_right::Array{Label, 1}=Label[R])
+   LieLinearCombination(Tuple{LieExpression, Real}[(normalize_lie_products(x, to_the_right=to_the_right), c) for (x, c) in ex.terms])
+end
+
+function normalize_lie_products(ex::LieCommutator; to_the_right::Array{Label, 1}=Label[Rm])
+    A = normalize_lie_products(ex.A, to_the_right=to_the_right)
+    B = normalize_lie_products(ex.B, to_the_right=to_the_right)
+    LieCommutator(A, B)
+end
+
+function normalize_lie_products(ex::LieExponential; to_the_right::Array{Label, 1}=Label[R])
+    if ex.t == t_zero
+        return lie_id
+    elseif isa(ex.DF.F, VectorFieldLinearCombination) && length(ex.DF.F.terms)==1
+        c = ex.DF.F.terms[1][2]
+        term = ex.DF.F.terms[1][1]
+        if c==0 then
+            return lie_id
+        else
+            return exp(c*ex.t, term, ex.label)
+        end    
+    else
+        return ex
+    end    
+end
+
+function normalize_lie_products(comb::LieExpressionToSpaceExpressionApplication; to_the_right::Array{Label, 1}=Label[R]) 
+   apply(normalize_lie_products(comb.lie_ex, to_the_right=to_the_right), comb.ex, comb.u) 
+end   
+
+function normalize_lie_products(ex::LieProduct; to_the_right::Array{Label, 1}=Label[R])
+    ex1 = lie_id
+    for factor in ex.factors
+       ex1 = ex1 *  normalize_lie_products(factor, to_the_right=to_the_right)
+    end
+    c = 1
+    if isa(ex1, LieLinearCombination) && length(ex1.terms)==1 
+        if !isa(ex1.terms[1][1], LieProduct)
+            return ex1
+        end    
+        c = ex1.terms[1][2]
+        ex1 = ex1.terms[1][1]
+    end 
+      
+    imax = length(ex1.factors)
+    i = 1    
+    ex2 = lie_id
+    while i<=imax
+        factor = ex1.factors[i]
+        if isa(factor, LieDerivative) || isa(factor, LieExponential)
+            n = 0
+            label_left = default
+            label_right = default
+            t_left = t_zero
+            t_right = t_zero
+            F = false
+            if isa(factor, LieDerivative)
+                 F = factor.F
+                 n = 1
+            else
+                F = factor.DF.F
+                if factor.label in to_the_right
+                    t_right = factor.t
+                    label_right = factor.label
+                else
+                    t_left = factor.t
+                    label_left = factor.label
+                end    
+            end
+            i = i + 1
+
+            while i<=imax && ((isa(ex1.factors[i], LieDerivative) && ex1.factors[i].F==F) 
+                          || (isa(ex1.factors[i], LieExponential) &&  ex1.factors[i].DF.F==F) )
+
+                factor = ex1.factors[i]
+                if isa(factor, LieDerivative)
+                    n = n + 1
+                else
+                    if factor.label in to_the_right
+                        t_right = t_right + factor.t
+                        label_right = factor.label # the most right occurence determines the label
+                    else
+                        t_left = t_left + factor.t
+                    end    
+                end
+                
+                i = i + 1
+            end                          
+
+            if t_left != t_zero 
+                ex2 = ex2*exp(t_left, F, label_left)
+            end
+            ex2 = ex2 * D(F)^n
+            if t_right != t_zero 
+                ex2 = ex2*exp(t_right, F, label_right)
+            end
+        else
+            ex2 = ex2*term
+            i = i+1
+        end    
+    end
+    return c*ex2
+end
+
+## normalize_lie_products for SpaceExpressions
+
+normalize_lie_products(ex::SpaceVariable; to_the_right::Array{Label, 1}=Label[R]) = ex
+
+function normalize_lie_products(ex::SpaceLinearCombination; to_the_right::Array{Label, 1}=Label[R])
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(normalize_lie_products(x, to_the_right=to_the_right), c) 
+    for (x, c) in ex.terms])
+end
+
+function normalize_lie_products(ex::AutonomousFunctionExpression; to_the_right::Array{Label, 1}=Label[R])
+    AutonomousFunctionExpression( ex.fun, 
+        normalize_lie_products(ex.x, to_the_right=to_the_right), [normalize_lie_products(x, to_the_right=to_the_right) 
+        for x in ex.d_args]...)
+end
+
+function normalize_lie_products(ex::FlowExpression; to_the_right::Array{Label, 1}=Label[R])
+    FlowExpression(  ex.fun,
+        ex.t, normalize_lie_products(ex.x, to_the_right=to_the_right), ex.dt_order, 
+        [normalize_lie_products(x, to_the_right=to_the_right) for x in ex.d_args]...)
+end
+
+function normalize_lie_products(ex::NonAutonomousFunctionExpression; to_the_right::Array{Label, 1}=Label[R])
+    NonAutonomousFunctionExpression(  ex.fun,
+        ex.t, normalize_lie_products(ex.x, to_the_right=to_the_right), ex.dt_order, 
+        [normalize_lie_products(x, to_the_right=to_the_right) for x in ex.d_args]...)
+end
+
+
+

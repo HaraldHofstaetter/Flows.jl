@@ -25,6 +25,7 @@ export evaluate_lie_expressions, evaluate, expand_lie_expressions
 export expand_lie_commutators, expand_lie_derivatives
 export merge_lie_derivatives, lie_zero, lie_id
 export add_factorized, Label, default, L, R, show_exponential_labels
+export normalize_lie_products
 
 _str_from_objref(x) = hex(Int(pointer_from_objref(x)))
 
