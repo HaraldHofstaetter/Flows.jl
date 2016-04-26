@@ -1,3 +1,82 @@
+### substitute ########################################################
+
+# substitute TimeExpression by TimeExpression
+
+substitute(ex::LieDerivative, this::TimeExpression, by::TimeExpression) = ex
+
+function substitute(ex::LieExponential, this::TimeExpression, by::TimeExpression)
+    exp(substitute(ex.t, this, by), ex.DF, ex.label)
+end
+
+function substitute(ex::LieProduct, this::TimeExpression, by::TimeExpression)
+    LieProduct(LieExpression[substitute(x, this, by) for x in ex.factors])
+end
+
+function substitute(ex::LieCommutator, this::TimeExpression, by::TimeExpression)
+    LieCommutator(substitute(ex.A, this, by), substitute(ex.B, this, by))
+end
+
+function substitute(ex::LieLinearCombination, this::TimeExpression, by::TimeExpression)
+    LieLinearCombination(Tuple{LieExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
+end
+
+# substitute VectorFieldExpression by VectorFieldExpression
+
+function substitute(ex::LieDerivative, this::VectorFieldExpression, by::VectorFieldExpression)
+    D(substitute(ex.F, this, by))
+end
+
+function substitute(ex::LieExponential, this::VectorFieldExpression, by::VectorFieldExpression)
+    exp(ex.t, substitute(ex.DF, this, by), ex.label)
+end
+
+function substitute(ex::LieProduct, this::VectorFieldExpression, by::VectorFieldExpression)
+    LieProduct(LieExpression[substitute(x, this, by) for x in ex.factors])
+end
+
+function substitute(ex::LieCommutator, this::VectorFieldExpression, by::VectorFieldExpression)
+    LieCommutator(substitute(ex.A, this, by), substitute(ex.B, this, by))
+end
+
+function substitute(ex::LieLinearCombination, this::VectorFieldExpression, by::VectorFieldExpression)
+    LieLinearCombination(Tuple{LieExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
+end
+
+# substitute LieExpression by LieExpression
+
+substitute(ex::LieDerivative, this::LieExpression, by::LieExpression) = (ex == this ? by : ex)
+
+function substitute(ex::LieExponential, this::LieExpression, by::LieExpression)
+    ex == this ? by : exp(ex.t, substitute(ex.DF, this, by), ex.label)
+end
+
+function substitute(ex::LieProduct, this::LieExpression, by::LieExpression)
+    ex == this ? by : LieProduct(LieExpression[substitute(x, this, by) for x in ex.factors])
+end
+
+function substitute(ex::LieCommutator, this::LieExpression, by::LieExpression)
+    ex == this ? by : LieCommutator(substitute(ex.A, this, by), substitute(ex.B, this, by))
+end
+
+function substitute(ex::LieLinearCombination, this::LieExpression, by::LieExpression)
+    ex == this ? by : LieLinearCombination(Tuple{LieExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
+end
+
+# LieExpressionToSpaceExpressionApplication
+
+substitute(comb::LieExpressionToSpaceExpressionApplication, this::TimeExpression, by::TimeExpression) =
+        apply(substitute(comb.lie_ex, this, by), substitute(comb.ex, this, by), comb.u)
+
+substitute(comb::LieExpressionToSpaceExpressionApplication, this::SpaceExpression, by::SpaceExpression) =
+        apply(comb.lie_ex, substitute(comb.ex, this, by), substitute(comb.u, this, by))
+
+substitute(comb::LieExpressionToSpaceExpressionApplication, this::VectorFieldExpression, by::VectorFieldExpression) =
+        apply(substitute(comb.lie_ex, this, by), substitute(comb.ex, this, by), comb.u)
+
+substitute(comb::LieExpressionToSpaceExpressionApplication, this::LieExpression, by::LieExpression) =
+        apply(substitute(comb.lie_ex, this, by), comb.ex, comb.u)
+
+
 ### evaluate_lie_expressions ##########################################
 
 function evaluate_lie_expressions(lie_ex::LieDerivative, ex::SpaceExpression, u::SpaceVariable)
