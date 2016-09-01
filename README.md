@@ -1,6 +1,9 @@
 # Flows.jl
 A Julia package for the symbolic manipulation of flows of nonlinear evolution equations.
 
+Flows.jl is descibed in the paper
+
+>[W. Auzinger](http://www.asc.tuwien.ac.at/~winfried), [H. Hofstätter](http://www.harald-hofstaetter.at), [O. Koch](http://othmar-koch.org), [ Symbolic Manipulation of Flows of Nonlinear Evolution Equations, with Application in the Analysis of Split-Step Time Integrators](http://arxiv.org/pdf/1605.00453.pdf), to appear in [Proceedings of CASC 2016](http://www.casc.cs.uni-bonn.de/2016/).
 
 Flows.jl (or a predecessor written in Perl) was used to carry out and verify the symbolic manipulations 
 needed for the analysis of error estimators for splitting methods, which is described in the paper
