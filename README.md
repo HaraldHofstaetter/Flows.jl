@@ -1,7 +1,9 @@
 # Flows.jl
 A Julia package for the symbolic manipulation of flows of nonlinear evolution equations.
 
-Flows.jl is descibed in the paper
+Flows.jl was presented at the [CASC 2016](http://www.casc.cs.uni-bonn.de/2016/) workshop
+(=>[Slides of the Talk](http://www.harald-hofstaetter.at/Math/SymbolicManipulationOfFlows.pdf))
+and is descibed in the paper
 
 >[W. Auzinger](http://www.asc.tuwien.ac.at/~winfried), [H. Hofstätter](http://www.harald-hofstaetter.at), [O. Koch](http://othmar-koch.org), [ Symbolic Manipulation of Flows of Nonlinear Evolution Equations, with Application in the Analysis of Split-Step Time Integrators](http://arxiv.org/pdf/1605.00453.pdf), to appear in [Proceedings of CASC 2016](http://www.casc.cs.uni-bonn.de/2016/).
 
