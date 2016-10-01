@@ -1,7 +1,7 @@
 # Flows.jl
 A Julia package for the symbolic manipulation of flows of nonlinear evolution equations.
 
-Version 2.0 additionally implements symbolic manipulations of Lie derivatives and 
+Version 2.0 of Flows.jl additionally implements symbolic manipulations of Lie derivatives and 
 exponentials of Lie derivatives. It allows to transform Lie calculus expressions into corresponding
 expressions consisting only of (Fréchet derivatives of) vector fields and flows, see the examples below.
 
