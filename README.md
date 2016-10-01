@@ -38,10 +38,10 @@ To get easy access to the examples, copy them into the home directory:
 cp(joinpath(homedir(), ".julia/v0.4/Flows/examples/"), joinpath(homedir(), "Flows_examples"), remove_destination=true)
 ```
 Then 'Flows_examples' will be listed in the JuliaBox home screen. The examples contain among others
-+ [Flows.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/lie_experimental/examples/Flows.ipynb)
-+ [DefectLieTrotter.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/lie_experimental/examples/DefectLieTrotter.ipynb)
-+ [ElementaryDifferentials.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/lie_experimental/examples/ElementaryDifferentials.ipynb)
-+ [VectorFields.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/lie_experimental/examples/VectorFields.ipynb)
-+ [LieDerivatives.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/lie_experimental/examples/LieDerivatives.ipynb)
-+ [LieDerivatives2.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/lie_experimental/examples/LieDerivatives2.ipynb)
++ [Flows.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/master/examples/Flows.ipynb)
++ [DefectLieTrotter.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/master/examples/DefectLieTrotter.ipynb)
++ [ElementaryDifferentials.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/master/examples/ElementaryDifferentials.ipynb)
++ [VectorFields.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/master/examples/VectorFields.ipynb)
++ [LieDerivatives.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/master/examples/LieDerivatives.ipynb)
++ [LieDerivatives2.ipynb](https://github.com/HaraldHofstaetter/Flows.jl/blob/master/examples/LieDerivatives2.ipynb)
 
