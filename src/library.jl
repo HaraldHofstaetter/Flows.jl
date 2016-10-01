@@ -4,55 +4,66 @@ global x_var = SpaceVariable("x_var")
 
 # substitute TimeVariable by TimeExpression
 
-substitute(ex::TimeVariable, this::TimeVariable, by::TimeExpression) = (ex==this ? by : ex)
+substitute(ex::TimeVariable, this::TimeExpression, by::TimeExpression) = (ex==this ? by : ex)
 
-function substitute(ex::TimeLinearCombination, this::TimeVariable, by::TimeExpression)
-    TimeLinearCombination(Tuple{TimeExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
+function substitute(ex::TimeLinearCombination, this::TimeExpression, by::TimeExpression)
+    ex==this ? by : TimeLinearCombination(Tuple{TimeExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
 
-substitute(ex::SpaceVariable, this::TimeVariable, by::TimeExpression) = ex 
+substitute(ex::SpaceVariable, this::TimeExpression, by::TimeExpression) = ex 
 
-function substitute(ex::SpaceLinearCombination, this::TimeVariable, by::TimeExpression)
+function substitute(ex::SpaceLinearCombination, this::TimeExpression, by::TimeExpression)
     SpaceLinearCombination(Tuple{SpaceExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
 
-function substitute(ex::AutonomousFunctionExpression, this::TimeVariable, by::TimeExpression)
+function substitute(ex::AutonomousFunctionExpression, this::TimeExpression, by::TimeExpression)
     AutonomousFunctionExpression(ex.fun, substitute(ex.x, this, by), [substitute(x, this, by) for x in ex.d_args]...)
 end
 
-function substitute(ex::FlowExpression, this::TimeVariable, by::TimeExpression)
+function substitute(ex::FlowExpression, this::TimeExpression, by::TimeExpression)
     FlowExpression(ex.fun, substitute(ex.t, this, by), substitute(ex.x, this, by), ex.dt_order,
         [substitute(x, this, by) for x in ex.d_args]...)
 end
 
-function substitute(ex::NonAutonomousFunctionExpression, this::TimeVariable, by::TimeExpression)
+function substitute(ex::NonAutonomousFunctionExpression, this::TimeExpression, by::TimeExpression)
     NonAutonomousFunctionExpression(ex.fun, substitute(ex.t, this, by), substitute(ex.x, this, by), ex.dt_order,
         [substitute(x, this, by) for x in ex.d_args]...)
 end
 
 # substitute SpaceVariable by SpaceExpression
 
-substitute(ex::SpaceVariable, this::SpaceVariable, by::SpaceExpression) = (ex==this ? by : ex)
+substitute(ex::SpaceVariable, this::SpaceExpression, by::SpaceExpression) = (ex==this ? by : ex)
 
-function substitute(ex::SpaceLinearCombination, this::SpaceVariable, by::SpaceExpression)
-    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
+function substitute(ex::SpaceLinearCombination, this::SpaceExpression, by::SpaceExpression)
+    ex==this ? by : SpaceLinearCombination(Tuple{SpaceExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
 end
 
-function substitute(ex::AutonomousFunctionExpression, this::SpaceVariable, by::SpaceExpression)
-    AutonomousFunctionExpression(ex.fun, substitute(ex.x, this, by), [substitute(x, this, by) for x in ex.d_args]...)
+function substitute(ex::AutonomousFunctionExpression, this::SpaceExpression, by::SpaceExpression)
+    ex==this ? by : AutonomousFunctionExpression(ex.fun, substitute(ex.x, this, by), [substitute(x, this, by) for x in ex.d_args]...)
 end
 
-function substitute(ex::FlowExpression, this::SpaceVariable, by::SpaceExpression)
-    FlowExpression(ex.fun, ex.t, substitute(ex.x, this, by), ex.dt_order,
+function substitute(ex::FlowExpression, this::SpaceExpression, by::SpaceExpression)
+    ex==this ? by : FlowExpression(ex.fun, ex.t, substitute(ex.x, this, by), ex.dt_order,
         [substitute(x, this, by) for x in ex.d_args]...)
 end
 
-function substitute(ex::NonAutonomousFunctionExpression, this::SpaceVariable, by::SpaceExpression)
-    NonAutonomousFunctionExpression(ex.fun, ex.t, substitute(ex.x, this, by), ex.dt_order,
+function substitute(ex::NonAutonomousFunctionExpression, this::SpaceExpression, by::SpaceExpression)
+    ex==this ? by : NonAutonomousFunctionExpression(ex.fun, ex.t, substitute(ex.x, this, by), ex.dt_order,
         [substitute(x, this, by) for x in ex.d_args]...)
 end
 
 # substitute AutonomousFunction by AutonomousFunction
+# Note: AutonomousFunction==VectorFieldExpression
+
+substitute(ex::VectorFieldVariable, this::VectorFieldExpression, by::VectorFieldExpression) = (ex==this ? by : ex)
+
+function substitute(ex::VectorFieldLinearCombination, this::VectorFieldExpression, by::VectorFieldExpression)
+    ex==this ? by : VectorFieldLinearCombination(Tuple{VectorFieldExpression, Real}[(substitute(x, this, by), c) for (x, c) in ex.terms])
+end
+
+function substitute(ex::VectorFieldCommutator, this::VectorFieldExpression, by::VectorFieldExpression)
+    ex==this ? by :  VectorFieldCommutator(substitute(ex.A, this, by), substitute(ex.B, this, by))
+end
 
 substitute(ex::SpaceVariable, this::AutonomousFunction, by::AutonomousFunction) = ex
 
@@ -61,12 +72,12 @@ function substitute(ex::SpaceLinearCombination, this::AutonomousFunction, by::Au
 end
 
 function substitute(ex::AutonomousFunctionExpression, this::AutonomousFunction, by::AutonomousFunction)
-    AutonomousFunctionExpression( ex.fun==this ? by : ex.fun, 
+    AutonomousFunctionExpression( substitute(ex.fun, this, by), 
         substitute(ex.x, this, by), [substitute(x, this, by) for x in ex.d_args]...)
 end
 
 function substitute(ex::FlowExpression, this::AutonomousFunction, by::AutonomousFunction)
-    FlowExpression(  ex.fun==this ? by : ex.fun,
+    FlowExpression(  substitute(ex.fun, this, by),
         ex.t, substitute(ex.x, this, by), ex.dt_order, [substitute(x, this, by) for x in ex.d_args]...)
 end
 
@@ -143,7 +154,7 @@ commutator(F::AutonomousFunction, G::AutonomousFunction, u::SpaceExpression) = F
 # double commutator [F,[G,H]] 
 function commutator(F::AutonomousFunction, G::AutonomousFunction, H::AutonomousFunction, u::SpaceExpression)
 	v = SpaceVariable("v") 
-        X = AutonomousFunction("X")
+        X = VectorFieldVariable("X")
         substitute(substitute(commutator(F,X,v), X , commutator(G,H,v), v), v, u)
 end
 
@@ -308,6 +319,46 @@ function expand(ex::NonAutonomousFunctionExpression)
 end
 
 
+
+###  resolve_vector_field_expressions ###################
+
+resolve_vector_field_expressions(x::SpaceVariable) = x
+
+function resolve_vector_field_expressions(ex::SpaceLinearCombination)   
+    SpaceLinearCombination(Tuple{SpaceExpression, Real}[(resolve_vector_field_expressions(x), c) for (x, c) in ex.terms])
+end
+
+function resolve_vector_field_expressions(ex::AutonomousFunctionExpression)   
+    if ex.fun==op_zero
+        return x_zero
+    elseif isa(ex.fun, VectorFieldVariable)
+        return   ex.fun(resolve_vector_field_expressions(ex.x), [resolve_vector_field_expressions(x) for x in ex.d_args]...)
+    elseif isa(ex.fun, VectorFieldLinearCombination)
+        return SpaceLinearCombination(Tuple{SpaceExpression, Real}[(resolve_vector_field_expressions(t(ex.x, ex.d_args...)), c) 
+                                      for (t, c) in ex.fun.terms])
+    elseif isa(ex.fun, VectorFieldCommutator)
+        A = ex.fun.A
+        B = ex.fun.B
+        u = ex.x 
+        ex1 = resolve_vector_field_expressions(A(u,B(u)) - B(u,A(u)))
+        for arg in ex.d_args
+            ex1 = differential(ex1, u, resolve_vector_field_expressions(arg))
+        end
+        return ex1
+    else
+        @assert false "expected VectorFieldVariable, VectorFieldLinearCombination, or VectorFieldCommutator"
+    end
+end
+
+function resolve_vector_field_expressions(ex::FlowExpression)   
+    FlowExpression(ex.fun, ex.t, resolve_vector_field_expressions(ex.x), ex.dt_order, [resolve_vector_field_expressions(x) for x in ex.d_args]...)
+end
+
+function resolve_vector_field_expressions(ex::NonAutonomousFunctionExpression)   
+    NonAutonomousFunctionExpression(ex.fun, ex.t, resolve_vector_field_expressions(ex.x), ex.dt_order, [resolve_vector_field_expressions(x) for x in ex.d_args]...)
+end
+
+
 ### reduce_order########################################
 
 reduce_order(x::SpaceVariable) = x
@@ -327,7 +378,7 @@ end
 
 function _reduce_order_init(m::Integer)
     global ro_m = m 
-    global ro_F = AutonomousFunction("F")
+    global ro_F = VectorFieldVariable("F")
     global ro_t = TimeVariable("t")
     global ro_u = SpaceVariable("u")
     global ro_vars = SpaceVariable[ SpaceVariable(string("v",k)) for k=1:m ]

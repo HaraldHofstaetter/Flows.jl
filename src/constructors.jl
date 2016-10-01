@@ -37,7 +37,8 @@ macro funs(x...)
     end
     for s in x
         @assert isa(s,Symbol) "@funs expected a list of symbols"
-        push!(q.args, Expr(:(=), s, Expr(:call, :AutonomousFunction, Expr(:quote, string(s)))))
+        #push!(q.args, Expr(:(=), s, Expr(:call, :AutonomousFunction, Expr(:quote, string(s)))))
+        push!(q.args, Expr(:(=), s, Expr(:call, :VectorFieldVariable, Expr(:quote, string(s)))))
     end
     push!(q.args, Expr(:tuple, x...))
     eval(Main, q)
